@@ -84,5 +84,11 @@ namespace MicroShift.Models
         // --- Calculated Logic ---
         [NotMapped]
         public double DistanceFromUser { get; set; }
+
+        [Required]
+        public string JobType { get; set; } = "Offline"; // "Online", "Remote", "Offline"
+
+        [Required]
+        public string Shift { get; set; } = "Flexible"; // "Day", "Night", "Flexible"
     }
 }

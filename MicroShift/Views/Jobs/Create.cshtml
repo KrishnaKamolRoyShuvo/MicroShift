@@ -1,189 +1,198 @@
 ﻿@model MicroShift.Models.Job
-
 @{
     ViewData["Title"] = "Post a New Job";
 }
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
-<!-- CRITICAL UI FIX: Prevent Leaflet from breaking Tailwind Shadows -->
-<style>
-    #map .leaflet-pane, #map .leaflet-top, #map .leaflet-bottom { z-index: 1 !important; }
-    #map .leaflet-control { z-index: 10 !important; }
-    #map { z-index: 0 !important; }
-    /* Fix for photo inputs not triggering styles */
-    .file-selected { border-color: #0F52BA !important; background-color: #EEF2FF !important; }
-    .file-selected .file-icon { color: #0F52BA !important; }
-    .file-selected .file-label { color: #0F52BA !important; font-weight: 900 !important;}
-</style>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        
+        <div class="bg-brandBlue p-6 text-white">
+            <h1 class="text-3xl font-black">Post a Job</h1>
+            <p class="text-indigo-100 mt-2 font-medium">Find the perfect worker in minutes.</p>
+        </div>
 
-<div class="max-w-5xl mx-auto py-10 px-4">
-    <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Create a New Job Post</h1>
-    <p class="text-gray-500 mb-8">Fill in the details below to find the best worker in your area.</p>
+        <form asp-action="Create" enctype="multipart/form-data" class="p-8 space-y-6">
+            <div asp-validation-summary="ModelOnly" class="text-red-500 text-sm mb-4"></div>
 
-    <form asp-action="Create" method="post" enctype="multipart/form-data" id="jobForm" class="space-y-8 relative">
-        <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 shadow-sm font-bold"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label asp-for="Title" class="block text-sm font-bold text-gray-700 mb-1">Job Title</label>
+                    <input asp-for="Title" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" required />
+                </div>
 
-        <!-- SECTION 1: BASIC DETAILS -->
-        <div class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 relative z-10">
-            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <span class="bg-brandBlue text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm font-black">1</span>
-                General Information
-            </h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                <div class="space-y-4">
+                <div class="md:col-span-2">
+                    <label asp-for="Description" class="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                    <textarea asp-for="Description" rows="4" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" required></textarea>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-6">
+                <label class="block text-sm font-bold text-gray-700 mb-1">Upload Task Photos (Max 5)</label>
+                <p class="text-xs text-gray-500 mb-3">Upload clear photos to help workers understand the task. (Metadata is preserved for security & dispute resolution).</p>
+                <input type="file" name="images" id="imageUpload" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-brandBlue hover:file:bg-indigo-100 transition" />
+                <p id="fileLimitWarning" class="text-red-500 text-xs mt-2 hidden font-bold">You can only upload a maximum of 5 images.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-100 pt-6">
+                <div>
+                    <label asp-for="CategoryId" class="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                    <select asp-for="CategoryId" asp-items="ViewBag.CategoryId" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" required>
+                        <option value="">Select Category...</option>
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="JobType" class="block text-sm font-bold text-gray-700 mb-1">Job Type</label>
+                    <select asp-for="JobType" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none">
+                        <option value="Offline">Offline / In-Person</option>
+                        <option value="Online">Online / Remote</option>
+                        <option value="Remote">Remote</option>
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="Shift" class="block text-sm font-bold text-gray-700 mb-1">Shift</label>
+                    <select asp-for="Shift" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none">
+                        <option value="Flexible">Flexible / Anytime</option>
+                        <option value="Day">Day Shift</option>
+                        <option value="Night">Night Shift</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-100 pt-6">
+                <div>
+                    <label asp-for="PaymentAmount" class="block text-sm font-bold text-gray-700 mb-1">Total Payment Amount ($)</label>
+                    <input asp-for="PaymentAmount" type="number" step="0.01" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" required />
+                </div>
+                <div>
+                    <label asp-for="RequiredSkills" class="block text-sm font-bold text-gray-700 mb-1">Required Skills</label>
+                    <input asp-for="RequiredSkills" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" placeholder="e.g. English, Driving" />
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Location Details</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                     <div>
-                        <label asp-for="Title" class="block text-sm font-bold text-gray-700 mb-1">What do you need help with?</label>
-                        <input asp-for="Title" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brandBlue outline-none" placeholder="e.g. Move furniture to 3rd floor" />
-                        <span asp-validation-for="Title" class="text-red-500 text-xs font-semibold"></span>
+                        <label asp-for="Location" class="block text-sm font-bold text-gray-700 mb-1">General Area</label>
+                        <input asp-for="Location" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" required />
                     </div>
-
                     <div>
-                        <label asp-for="CategoryId" class="block text-sm font-bold text-gray-700 mb-1">Job Category</label>
-                        <select asp-for="CategoryId" asp-items="ViewBag.CategoryId" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brandBlue outline-none"></select>
+                        <label asp-for="LocationDirections" class="block text-sm font-bold text-gray-700 mb-1">Exact Directions</label>
+                        <input asp-for="LocationDirections" class="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-brandBlue outline-none" />
                     </div>
+                </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
-                            <label asp-for="PaymentAmount" class="block text-sm font-bold text-gray-700 mb-1">Budget (৳)</label>
-                            <input asp-for="PaymentAmount" type="number" step="0.01" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brandBlue" />
+                            <p class="font-bold text-gray-900 text-sm">Pinpoint the Job Location</p>
+                            <p class="text-xs text-gray-500 mt-1" id="gps-status">Click the map to place a pin manually, or click Auto-Detect.</p>
                         </div>
-                        <div class="flex flex-col justify-end">
-                            <div class="flex items-center space-x-2 p-2 bg-red-50 rounded-lg border border-red-100">
-                                <input asp-for="IsEmergency" type="checkbox" class="h-4 w-4 text-red-600 rounded cursor-pointer" />
-                                <label asp-for="IsEmergency" class="text-xs font-black text-red-700 cursor-pointer">EMERGENCY</label>
-                            </div>
-                        </div>
+                        <button type="button" id="get-location-btn" class="px-4 py-2 bg-brandBlue text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700 transition flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Auto-Detect Current Location
+                        </button>
                     </div>
+                    
+                    <div id="picker-map" class="w-full h-[300px] rounded-xl border border-gray-300 z-10 cursor-crosshair"></div>
                 </div>
-
-                <div>
-                    <label asp-for="Description" class="block text-sm font-bold text-gray-700 mb-1">Detailed Description</label>
-                    <textarea asp-for="Description" rows="8" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brandBlue outline-none" placeholder="Explain the job in detail so workers know what to expect..."></textarea>
-                    <span asp-validation-for="Description" class="text-red-500 text-xs font-semibold"></span>
-                </div>
+                
+                <input type="hidden" asp-for="Latitude" id="Latitude" required />
+                <input type="hidden" asp-for="Longitude" id="Longitude" required />
+                <span asp-validation-for="Latitude" class="text-red-500 text-xs mt-2 block">Please click the map to set a pin.</span>
             </div>
-        </div>
 
-        <!-- SECTION 2: PHOTO UPLOAD (RESTORED & INTERACTIVE) -->
-        <div class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 relative z-10">
-            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <span class="bg-brandBlue text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm font-black">2</span>
-                Job Photos (Optional)
-            </h3>
-            <p class="text-sm text-gray-500 mb-6">Adding photos helps workers understand the task better.</p>
-            
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                @for (int i = 1; i <= 5; i++)
-                {
-                    <div class="relative group">
-                        <!-- Added an ID for JavaScript selection -->
-                        <label id="label-photo-@i" class="block w-full h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-brandBlue hover:bg-blue-50 transition cursor-pointer flex flex-col items-center justify-center text-center p-2">
-                            <span class="text-2xl text-gray-400 group-hover:text-brandBlue file-icon">+</span>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter file-label">Photo @i</span>
-                            <!-- Added photo-input class for JavaScript event delegation -->
-                            <input type="file" name="jobImages" class="hidden photo-input" accept="image/*" data-index="@i" />
-                        </label>
-                    </div>
-                }
+            <div class="border-t border-gray-100 pt-6 flex items-center gap-3">
+                <input asp-for="IsEmergency" type="checkbox" class="w-5 h-5 text-red-600 rounded focus:ring-red-500" />
+                <label asp-for="IsEmergency" class="text-sm font-bold text-gray-900">Mark as Emergency</label>
             </div>
-        </div>
 
-        <!-- SECTION 3: LOCATION PINNING -->
-        <div class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 relative z-10">
-            <h3 class="text-xl font-bold text-gray-800 mb-2 flex items-center">
-                <span class="bg-brandBlue text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm font-black">3</span>
-                Precise Location
-            </h3>
-            <p class="text-sm text-gray-500 mb-6">Click on the map to set the exact location where the work will take place.</p>
-            
-            <!-- Map Container -->
-            <div id="map" style="height: 400px;" class="rounded-2xl border-2 border-gray-200 shadow-inner z-0"></div>
-
-            <!-- Coordinate Inputs -->
-            <input type="hidden" asp-for="Latitude" id="LatInput" />
-            <input type="hidden" asp-for="Longitude" id="LngInput" />
-            <span asp-validation-for="Latitude" class="text-red-600 font-extrabold text-sm mt-3 block"></span>
-
-            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label asp-for="Location" class="block text-sm font-bold text-gray-700 mb-1">General Area Name</label>
-                    <input asp-for="Location" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="e.g. Gulshan-2, Dhaka" />
-                    <span asp-validation-for="Location" class="text-red-500 text-xs font-semibold"></span>
-                </div>
-                <div>
-                    <label asp-for="LocationDirections" class="block text-sm font-bold text-gray-700 mb-1">Additional Directions</label>
-                    <input asp-for="LocationDirections" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Flat No, Road No, or Landmarks..." />
-                </div>
+            <div class="border-t border-gray-100 pt-6 flex justify-end items-center gap-4">
+                <a asp-action="Index" class="px-6 py-3 text-gray-600 font-bold hover:text-brandBlue transition">Cancel</a>
+                <button type="submit" id="submitBtn" class="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition">
+                    Post Job Live
+                </button>
             </div>
-        </div>
-
-        <button type="submit" class="w-full py-4 bg-brandBlue text-white font-black text-lg rounded-2xl hover:bg-blue-700 transition shadow-xl transform hover:-translate-y-1 relative z-20">
-            PUBLISH JOB POST
-        </button>
-    </form>
+        </form>
+    </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script>
-        // 1. Initialize Map
-        var map = L.map('map').setView([23.8103, 90.4125], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        document.addEventListener("DOMContentLoaded", function() {
+        // --- 1. Image Limit Enforcer ---
+        const fileInput = document.getElementById('imageUpload');
+        const submitBtn = document.getElementById('submitBtn');
+        const warning = document.getElementById('fileLimitWarning');
 
-        var marker;
+        fileInput.addEventListener('change', function() {
+        if (this.files.length > 5) {
+        warning.classList.remove('hidden');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+        warning.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        });
 
+        // --- 2. Interactive Map Logic ---
+        const latInput = document.getElementById('Latitude');
+        const lngInput = document.getElementById('Longitude');
+        const statusText = document.getElementById('gps-status');
+
+        // Default to Dhaka coordinates (or 0,0 if you prefer)
+        var map = L.map('picker-map').setView([23.8103, 90.4125], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+        var marker = null;
+
+        function setMarker(lat, lng, source) {
+        if (marker !== null) {
+        map.removeLayer(marker);
+        }
+        marker = L.marker([lat, lng]).addTo(map);
+        latInput.value = lat;
+        lngInput.value = lng;
+        statusText.innerText = `Location set via ${source}: ${lat.toFixed(4)}, ${lng.toFixed(4)} \u2705`;
+        statusText.className = "text-xs mt-1 font-bold text-green-600";
+        }
+
+        // A. Manual Click Setting
         map.on('click', function(e) {
-            var lat = e.latlng.lat;
-            var lng = e.latlng.lng;
-
-            if (marker) {
-                marker.setLatLng(e.latlng);
-            } else {
-                marker = L.marker(e.latlng).addTo(map);
-            }
-
-            // Sync hidden inputs for ASP.NET validation
-            document.getElementById('LatInput').value = lat;
-            document.getElementById('LngInput').value = lng;
+        setMarker(e.latlng.lat, e.latlng.lng, "Manual Map Click");
         });
 
-        // 2. JavaScript to handle Photo Upload Slots (New Fix)
-        const form = document.getElementById('jobForm');
-        
-        form.addEventListener('change', function(e) {
-            // Check if the changed element is one of our photo inputs
-            if (e.target.classList.contains('photo-input')) {
-                const index = e.target.dataset.index;
-                const label = document.getElementById(`label-photo-${index}`);
-                const iconSpan = label.querySelector('.file-icon');
-                const textSpan = label.querySelector('.file-label');
-
-                if (e.target.files && e.target.files.length > 0) {
-                    // SUCESS: File Selected!
-                    const filename = e.target.files[0].name;
-                    
-                    // Update the text to show the filename (truncated if too long)
-                    textSpan.textContent = filename.length > 20 ? filename.substring(0, 17) + '...' : filename;
-                    
-                    // Change the icon to a checkmark
-                    iconSpan.textContent = '✓';
-                    
-                    // Add Tailwind styling classes to show selected state
-                    label.classList.add('file-selected');
-
-                } else {
-                    // CANCELED: Reset the slot back to default
-                    iconSpan.textContent = '+';
-                    textSpan.textContent = `Photo ${index}`;
-                    label.classList.remove('file-selected');
-                }
-            }
+        // B. Auto-Detect Setting
+        document.getElementById('get-location-btn').addEventListener('click', function() {
+        statusText.innerText = "Searching for GPS satellite...";
+        statusText.className = "text-xs mt-1 font-bold text-brandBlue";
+                
+        if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        map.setView([lat, lng], 15);
+        setMarker(lat, lng, "Auto-Detect");
+        }, function(error) {
+        statusText.innerText = "GPS Error. Please click manually on the map.";
+        statusText.className = "text-xs mt-1 font-bold text-red-600";
+        });
+        } else {
+        statusText.innerText = "Geolocation not supported. Click the map.";
+        }
         });
 
+        // Auto-trigger GPS on load if requested
+        document.getElementById('get-location-btn').click();
+        });
     </script>
 }

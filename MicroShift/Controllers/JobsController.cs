@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using MicroShift.Data;
 using MicroShift.Models;
 using MicroShift.Utils;
+using MicroShift.Helpers;
+using Microsoft.AspNetCore.Hosting;
 
 namespace MicroShift.Controllers
 {
@@ -14,20 +16,38 @@ namespace MicroShift.Controllers
     {
         private readonly MicroShiftDBContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public JobsController(MicroShiftDBContext context, UserManager<ApplicationUser> userManager)
+        public JobsController(MicroShiftDBContext context, UserManager<ApplicationUser> userManager, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
             _userManager = userManager;
+            _webHostEnvironment = webHostEnvironment; // NEW
         }
 
-        // --- 1. THE JOB FEED (With Radius & Category Filter) ---
-        public async Task<IActionResult> Index(int radius = 15, int? categoryId = null)
+        // --- 1. THE JOB FEED (With Live GPS, Radius & Category Filter) ---
+        // Added userLat and userLon parameters to accept real-time device location from the client
+        // --- 1. THE JOB FEED (With Advanced Filters) ---
+        public async Task<IActionResult> Index(
+            int radius = 15,
+            int? categoryId = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? jobType = null,
+            string? shift = null,
+            double? userLat = null,
+            double? userLon = null)
         {
             var user = await _userManager.GetUserAsync(User);
-            ViewBag.CurrentRadius = radius;
 
-            // Load Categories for the filter dropdown
+            // Save current filter state to ViewBag so the UI form remembers what the user typed
+            ViewBag.CurrentRadius = radius;
+            ViewBag.SelectedCategory = categoryId;
+            ViewBag.MinPrice = minPrice;
+            ViewBag.MaxPrice = maxPrice;
+            ViewBag.JobType = jobType;
+            ViewBag.Shift = shift;
+
             ViewBag.Categories = await _context.Categories.ToListAsync();
 
             // Fetch open jobs
@@ -36,43 +56,44 @@ namespace MicroShift.Controllers
                 .Include(j => j.Category)
                 .Where(j => j.Status == "Open");
 
-            // Filter by Category if selected
-            if (categoryId.HasValue)
-            {
-                query = query.Where(j => j.CategoryId == categoryId.Value);
-            }
+            // --- APPLY ADVANCED FILTERS ---
+            if (categoryId.HasValue) query = query.Where(j => j.CategoryId == categoryId.Value);
+            if (minPrice.HasValue) query = query.Where(j => j.PaymentAmount >= minPrice.Value);
+            if (maxPrice.HasValue) query = query.Where(j => j.PaymentAmount <= maxPrice.Value);
+            if (!string.IsNullOrEmpty(jobType)) query = query.Where(j => j.JobType == jobType);
+            if (!string.IsNullOrEmpty(shift)) query = query.Where(j => j.Shift == shift);
 
             var allJobs = await query.ToListAsync();
 
-            // TRACK REACH: Every time a job appears in a search/feed, increment ImpressionCount
-            foreach (var j in allJobs)
-            {
-                j.ImpressionCount++;
-            }
+            foreach (var j in allJobs) j.ImpressionCount++;
             await _context.SaveChangesAsync();
 
-            // If user has no GPS data, show all jobs sorted by Newest & Emergency status
-            if (user == null || user.Latitude == null || user.Longitude == null)
+            double? targetLat = userLat ?? user?.Latitude;
+            double? targetLon = userLon ?? user?.Longitude;
+
+            ViewBag.UserLat = targetLat;
+            ViewBag.UserLon = targetLon;
+
+            if (!targetLat.HasValue || !targetLon.HasValue)
             {
-                return View(allJobs.OrderByDescending(j => j.IsEmergency).ThenByDescending(j => j.CreatedAt));
+                return View(allJobs.OrderByDescending(j => j.IsEmergency).ThenByDescending(j => j.CreatedAt).ToList());
             }
 
             var nearbyJobs = new List<Job>();
 
             foreach (var job in allJobs)
             {
-                // Logic Fix: Latitude/Longitude are now standard doubles (no .HasValue needed)
-                job.DistanceFromUser = GeoCalculator.GetDistanceInKm(
-                    user.Latitude.Value, user.Longitude.Value,
+                job.DistanceFromUser = MicroShift.Helpers.GeoCalculator.GetDistanceInKm(
+                    targetLat.Value, targetLon.Value,
                     job.Latitude, job.Longitude);
 
-                if (job.DistanceFromUser <= radius)
+                // Ignore radius if it's an Online/Remote job!
+                if (job.JobType == "Online" || job.JobType == "Remote" || job.DistanceFromUser <= radius)
                 {
                     nearbyJobs.Add(job);
                 }
             }
 
-            // Sort: Emergency First, then by Distance
             var sortedJobs = nearbyJobs
                 .OrderByDescending(j => j.IsEmergency)
                 .ThenBy(j => j.DistanceFromUser)
@@ -102,10 +123,10 @@ namespace MicroShift.Controllers
 
             if (user != null)
             {
-                // Calculate distance if user has GPS
                 if (user.Latitude.HasValue && user.Longitude.HasValue)
                 {
-                    job.DistanceFromUser = GeoCalculator.GetDistanceInKm(
+                    // FIXED AMBIGUOUS REFERENCE
+                    job.DistanceFromUser = MicroShift.Helpers.GeoCalculator.GetDistanceInKm(
                         user.Latitude.Value, user.Longitude.Value,
                         job.Latitude, job.Longitude);
                 }
@@ -125,7 +146,6 @@ namespace MicroShift.Controllers
         [Authorize(Roles = "Employer")]
         public async Task<IActionResult> Create()
         {
-            // Pass categories to the view for the dropdown
             ViewBag.CategoryId = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
             return View();
         }
@@ -134,19 +154,53 @@ namespace MicroShift.Controllers
         [HttpPost]
         [Authorize(Roles = "Employer")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Job job)
+        
+        public async Task<IActionResult> Create(Job job, List<IFormFile> images)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
 
-            // Set initial metadata
             job.EmployerId = user.Id;
             job.CreatedAt = DateTime.UtcNow;
             job.Status = "Open";
 
-            // Default Commission logic (Sprint 1)
             var category = await _context.Categories.FindAsync(job.CategoryId);
             job.FinalCommissionPercentage = category?.CategoryCommissionPercentage ?? 10.0;
+
+            // --- IMAGE UPLOAD LOGIC ---
+            if (images != null && images.Count > 0)
+            {
+                // Ensure the upload folder exists
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
+                Directory.CreateDirectory(uploadsFolder);
+
+                int imageCount = 1;
+                foreach (var file in images.Take(5)) // Strictly limit to 5
+                {
+                    if (file.Length > 0)
+                    {
+                        // Generate a unique filename so images don't overwrite each other
+                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+
+                        string dbPath = "/uploads/jobs/" + uniqueFileName;
+
+                        // Assign to the correct database column
+                        if (imageCount == 1) job.JobImageUrl = dbPath;
+                        else if (imageCount == 2) job.JobImageUrl2 = dbPath;
+                        else if (imageCount == 3) job.JobImageUrl3 = dbPath;
+                        else if (imageCount == 4) job.JobImageUrl4 = dbPath;
+                        else if (imageCount == 5) job.JobImageUrl5 = dbPath;
+
+                        imageCount++;
+                    }
+                }
+            }
 
             ModelState.Remove("EmployerId");
             ModelState.Remove("Employer");

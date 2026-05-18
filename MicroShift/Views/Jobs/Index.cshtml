@@ -1,152 +1,239 @@
 ﻿@model IEnumerable<MicroShift.Models.Job>
 @{
-    ViewData["Title"] = "Find Work";
+    ViewData["Title"] = "Find Nearby Work";
+    
+    // Safely parse coordinates from the ViewBag
+    string userLat = ViewBag.UserLat != null ? ViewBag.UserLat.ToString() : "null";
+    string userLon = ViewBag.UserLon != null ? ViewBag.UserLon.ToString() : "null";
 }
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
-<div class="max-w-7xl mx-auto px-4 py-8">
-    <!-- FILTER BAR -->
-    <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 mb-8 flex flex-wrap items-center justify-between gap-4">
-        <form asp-action="Index" method="get" class="flex items-center gap-4">
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase">Search Radius</label>
-                <select name="radius" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brandBlue sm:text-sm rounded-md" onchange="this.form.submit()">
-                    <option value="5" selected="@(ViewBag.CurrentRadius == 5)">5 KM</option>
-                    <option value="15" selected="@(ViewBag.CurrentRadius == 15)">15 KM</option>
-                    <option value="50" selected="@(ViewBag.CurrentRadius == 50)">50 KM</option>
-                </select>
-            </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Find Flexible Work</h1>
+        <p class="text-gray-500 mt-2 font-medium">Instantly locate jobs happening right around you.</p>
+    </div>
+    
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8 relative z-20">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+            
+            @if (ViewBag.UserLat != null)
+            {
+                <input type="hidden" name="userLat" value="@ViewBag.UserLat" />
+                <input type="hidden" name="userLon" value="@ViewBag.UserLon" />
+            }
 
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase">Category</label>
-                <select name="categoryId" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brandBlue sm:text-sm rounded-md" onchange="this.form.submit()">
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Category</label>
+                <select name="categoryId" class="w-full rounded-xl border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-brandBlue outline-none">
                     <option value="">All Categories</option>
                     @foreach (var cat in ViewBag.Categories)
                     {
-                        <option value="@cat.Id">@cat.Name</option>
+                        if (ViewBag.SelectedCategory != null && ViewBag.SelectedCategory == cat.Id)
+                        {
+                            <option value="@cat.Id" selected>@cat.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
                     }
                 </select>
             </div>
-        </form>
 
-        <div class="text-right">
-            <span class="text-gray-400 text-sm italic">Showing @Model.Count() jobs near you</span>
-        </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Max Distance (km)</label>
+                <input type="number" name="radius" value="@ViewBag.CurrentRadius" class="w-full rounded-xl border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-brandBlue outline-none" min="1" max="500" />
+            </div>
+
+            <div class="flex gap-2 lg:col-span-1">
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Min $</label>
+                    <input type="number" name="minPrice" value="@ViewBag.MinPrice" class="w-full rounded-xl border border-gray-300 px-2 py-2 focus:ring-2 focus:ring-brandBlue outline-none" placeholder="0" />
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Max $</label>
+                    <input type="number" name="maxPrice" value="@ViewBag.MaxPrice" class="w-full rounded-xl border border-gray-300 px-2 py-2 focus:ring-2 focus:ring-brandBlue outline-none" placeholder="Any" />
+                </div>
+            </div>
+
+            <div class="flex gap-2 lg:col-span-1">
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Type</label>
+                    <select name="jobType" class="w-full rounded-xl border border-gray-300 px-2 py-2 focus:ring-2 focus:ring-brandBlue outline-none text-sm">
+                        <option value="" selected="@(ViewBag.JobType == null ? "selected" : null)">Any</option>
+                        <option value="Offline" selected="@(ViewBag.JobType == "Offline" ? "selected" : null)">Offline</option>
+                        <option value="Online" selected="@(ViewBag.JobType == "Online" ? "selected" : null)">Online</option>
+                        <option value="Remote" selected="@(ViewBag.JobType == "Remote" ? "selected" : null)">Remote</option>
+                    </select>
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Shift</label>
+                    <select name="shift" class="w-full rounded-xl border border-gray-300 px-2 py-2 focus:ring-2 focus:ring-brandBlue outline-none text-sm">
+                        <option value="" selected="@(ViewBag.Shift == null ? "selected" : null)">Any</option>
+                        <option value="Day" selected="@(ViewBag.Shift == "Day" ? "selected" : null)">Day</option>
+                        <option value="Night" selected="@(ViewBag.Shift == "Night" ? "selected" : null)">Night</option>
+                        <option value="Flexible" selected="@(ViewBag.Shift == "Flexible" ? "selected" : null)">Flexible</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" class="w-full bg-brandBlue text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition shadow-sm h-[42px]">
+                    Search
+                </button>
+            </div>
+        </form>
     </div>
 
-    <!-- JOB GRID -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div id="map-container" class="w-full h-[400px] bg-gray-100 rounded-3xl overflow-hidden shadow-inner border border-gray-200 mb-10 relative z-10 flex items-center justify-center">
+        <div id="gps-loading" class="text-center text-gray-500 flex flex-col items-center">
+            <svg class="animate-spin h-8 w-8 text-brandBlue mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="font-bold">Locating nearby jobs...</p>
+            <p class="text-xs mt-1">Please allow location access if prompted.</p>
+        </div>
+        
+        <div id="map" class="w-full h-full hidden"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @if (!Model.Any())
+        {
+            <div class="col-span-full py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                <p class="text-xl font-bold text-gray-400">No jobs found matching your criteria.</p>
+                <p class="text-gray-500 mt-2">Try expanding your search radius or clearing some filters.</p>
+            </div>
+        }
+        
         @foreach (var job in Model)
         {
-            <div class="group relative bg-white rounded-3xl overflow-hidden shadow-lg border @(job.IsEmergency ? "border-red-500 ring-2 ring-red-200 animate-pulse-slow" : "border-gray-100") transition-all hover:shadow-2xl">
+            <a asp-action="Details" asp-route-id="@job.Id" class="block bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-brandBlue/30 transition duration-300 transform hover:-translate-y-1 overflow-hidden flex flex-col h-full relative">
+                
                 @if (job.IsEmergency)
                 {
-                    <div class="absolute top-4 right-4 bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest z-10">
+                    <div class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg uppercase tracking-wider z-10">
                         Emergency
                     </div>
                 }
-                
-                <!-- Rest of your Job Card design... -->
-                <div class="p-6">
-                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-brandBlue transition">@job.Title</h3>
-                    <p class="text-sm text-gray-500 mt-1">@job.Category?.Name • @job.CreatedAt.ToString("MMM dd, hh:mm tt")</p>
-                    
-                    <div class="mt-4 flex justify-between items-center">
-                        <span class="text-brandBlue font-black text-lg">৳@job.PaymentAmount</span>
-                        <a asp-action="Details" asp-route-id="@job.Id" class="px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-brandBlue transition">View Details</a>
+
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="inline-block px-3 py-1 bg-indigo-50 text-brandBlue text-xs font-bold rounded-full">
+                            @job.Category?.Name
+                        </span>
+                        <span class="text-lg font-black text-gray-900">$@job.PaymentAmount</span>
                     </div>
+
+                    <h3 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2">@job.Title</h3>
+                    <p class="text-sm text-gray-500 mb-6 line-clamp-3">@job.Description</p>
                 </div>
-            </div>
+                
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center mt-auto">
+                    <div class="flex items-center gap-2 text-sm font-medium text-gray-600">
+                        <svg class="w-4 h-4 text-brandPurple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        
+                        @if (job.JobType == "Online" || job.JobType == "Remote")
+                        {
+                            <span class="text-brandPurple font-bold">@job.JobType</span>
+                        }
+                        else if (job.Latitude != 0 && job.Longitude != 0)
+                        {
+                            <span>@job.DistanceFromUser.ToString("0.0") km away</span>
+                        }
+                        else
+                        {
+                            <span>Location unknown</span>
+                        }
+                    </div>
+                    <span class="text-xs text-gray-400 font-bold">@job.CreatedAt.ToString("MMM dd")</span>
+                </div>
+            </a>
         }
     </div>
 </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
-        <div>
-            <h1 class="text-3xl font-extrabold text-gray-900">Available Jobs</h1>
-            <p class="text-gray-500 mt-2">Find your next micro-shift and start earning.</p>
-        </div>
-        
-        <div class="flex items-center gap-6">
-            @if (User.IsInRole("Worker"))
-            {
-                <form method="get" asp-action="Index" class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200">
-                    <label for="radius" class="text-sm font-bold text-gray-700 whitespace-nowrap">Search Radius:</label>
-                    <input type="range" id="radius" name="radius" min="1" max="50" value="@ViewBag.CurrentRadius"
-                           class="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brandBlue"
-                           oninput="document.getElementById('radiusOutput').innerText = this.value + ' km'">
-                    <span id="radiusOutput" class="text-sm font-bold text-brandBlue w-12">@ViewBag.CurrentRadius km</span>
-                    <button type="submit" class="ml-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded transition">Apply</button>
-                </form>
-            }
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            
+        let userLat = @userLat;
+        let userLon = @userLon;
 
-            @if (User.IsInRole("Employer"))
-            {
-                <a asp-controller="Jobs" asp-action="Create" class="px-6 py-3 text-white font-medium bg-gradient-to-r from-brandBlue to-brandPurple rounded-lg shadow-md hover:shadow-lg transition">
-                    + Post a New Job
-                </a>
-            }
-        </div>
-    </div>
+        const mapDiv = document.getElementById('map');
+        const loadingDiv = document.getElementById('gps-loading');
 
-    @if (!Model.Any())
-    {
-        <div class="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
-            <h3 class="text-xl font-bold text-gray-700">No jobs available right now.</h3>
-            <p class="text-gray-500 mt-2">Check back later or post a new job if you are an employer!</p>
-        </div>
-    }
-    else
-    {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @foreach (var job in Model)
+        if (userLat === null || userLon === null) {
+        if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('userLat', position.coords.latitude);
+        currentUrl.searchParams.set('userLon', position.coords.longitude);
+        window.location.href = currentUrl.toString();
+        }, function(error) {
+        console.error("GPS Error:", error);
+        loadingDiv.innerHTML = "<p class='text-red-500 font-bold'>Unable to access GPS.</p><p class='text-xs mt-1 text-gray-500'>Showing default list.</p>";
+        });
+        } else {
+        loadingDiv.innerHTML = "<p class='text-gray-500'>Geolocation not supported.</p>";
+        }
+        }
+        else {
+        loadingDiv.classList.add('hidden');
+        mapDiv.classList.remove('hidden');
+
+        var map = L.map('map').setView([userLat, userLon], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var userIcon = L.divIcon({
+        html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse"></div>',
+        className: '',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+        });
+
+        L.marker([userLat, userLon], { icon: userIcon }).addTo(map)
+        .bindPopup("<b class='text-brandBlue'>You are here!</b>").openPopup();
+
+        var jobsData = [
+        @foreach (var job in Model)
+        {
+            if (job.Latitude != 0 && job.Longitude != 0 && job.JobType != "Online" && job.JobType != "Remote")
             {
-                <div class="bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition overflow-hidden">
-                    
-                    @if (!string.IsNullOrEmpty(job.JobImageUrl))
+                <text>
                     {
-                        <div class="h-48 w-full bg-gray-200">
-                            <img src="@job.JobImageUrl" class="w-full h-full object-cover" alt="Job Cover" />
-                        </div>
-                    }
-
-                    <div class="p-6 flex flex-col flex-grow">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium @(job.UrgencyLevel == "Urgent" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800")">
-                                @job.UrgencyLevel
-                            </span>
-                            <span class="text-lg font-bold text-gray-900">৳@job.PaymentAmount</span>
-                        </div>
-
-                        <h3 class="text-xl font-bold text-gray-900 mb-2">@job.Title</h3>
-
-                        @if (job.DistanceFromUser > 0)
-                        {
-                            <p class="text-sm font-bold text-brandBlue mb-4 flex items-center">
-                                📍 @Math.Round(job.DistanceFromUser, 1) km away from you
-                            </p>
-                        }
-
-                        <p class="text-sm text-gray-500 mb-4 line-clamp-2">@job.Description</p>
-
-                        <div class="mt-auto space-y-2">
-                            <div class="flex items-center text-sm text-gray-600">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                @job.Location
-                            </div>
-                            <div class="flex items-center text-sm text-gray-600">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                Posted by @job.Employer?.FullName
-                            </div>
-                        </div>
-
-                        <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" class="block text-center w-full mt-6 py-2 px-4 border border-brandBlue text-brandBlue rounded-lg hover:bg-brandBlue hover:text-white font-bold transition">
-                            View Details
-                        </a>
-                    </div>
-                </div>
+                    id: @job.Id,
+                    title: "@Html.Raw(job.Title.Replace("\"", "\\\"").Replace("\n", " "))",
+                    lat: @job.Latitude,
+                    lng: @job.Longitude,
+                    price: "@job.PaymentAmount",
+                    distance: "@job.DistanceFromUser.ToString("0.0")",
+                    url: "/Jobs/Details/@job.Id"
+                    },
+                </text>
             }
+        }
+        ];
+
+        jobsData.forEach(function(job) {
+        var marker = L.marker([job.lat, job.lng]).addTo(map);
+        marker.bindPopup(`
+        <div class="text-center p-1">
+        <p class="font-black text-gray-900 mb-1 leading-tight">${job.title}</p>
+        <p class="text-brandBlue font-bold mb-1">$${job.price}</p>
+        <p class="text-xs text-gray-500 mb-2">${job.distance} km away</p>
+        <a href="${job.url}" class="block w-full bg-gray-900 text-white text-xs font-bold py-1.5 rounded hover:bg-black transition">View Job</a>
         </div>
-    }
-</div>
+        `);
+        });
+        }
+        });
+    </script>
+}
