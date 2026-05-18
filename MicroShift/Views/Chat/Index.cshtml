@@ -1,0 +1,208 @@
+﻿@model IEnumerable<MicroShift.Models.Message>
+@{
+    ViewData["Title"] = "Job Chat";
+    var currentUserId = ViewBag.CurrentUserId as string;
+    var receiver = ViewBag.Receiver as MicroShift.Models.ApplicationUser;
+    var job = ViewBag.Job as MicroShift.Models.Job;
+}
+
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-[700px]">
+        
+        <div class="bg-gray-50 border-b border-gray-200 p-6 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-extrabold text-gray-900">@receiver.FullName</h2>
+                <p class="text-sm text-brandBlue font-bold mt-1">Regarding: @job.Title</p>
+            </div>
+            <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" class="text-sm font-bold text-gray-500 hover:text-brandBlue transition">Back to Job</a>
+        </div>
+
+        <div id="chatBox" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+            @foreach (var msg in Model)
+            {
+                bool isMe = msg.SenderId == currentUserId;
+                <div class="flex @(isMe ? "justify-end" : "justify-start")">
+                    <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm @(isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none")">
+                        
+                        @if (!string.IsNullOrEmpty(msg.ImageUrl))
+                        {
+                            <a href="@msg.ImageUrl" target="_blank">
+                                <img src="@msg.ImageUrl" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" alt="Attachment" />
+                            </a>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(msg.Content))
+                        {
+                            <p class="text-sm @(msg.IsFlaggedBySystem ? "font-bold text-red-300 italic" : "")">@msg.Content</p>
+                        }
+                        <span class="text-[10px] mt-2 block @(isMe ? "text-indigo-200" : "text-gray-400")">
+                            @msg.SentAt.ToString("MMM dd, h:mm tt")
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div id="uploadStatus" class="hidden px-4 py-2 bg-indigo-50 text-brandBlue text-xs font-bold text-center animate-pulse">
+            Uploading image... please wait.
+        </div>
+
+        <div id="imagePreviewContainer" class="hidden px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-start gap-4">
+            <div class="relative inline-block">
+                <img id="imagePreview" src="" class="h-16 w-16 object-cover rounded-lg border border-gray-300 shadow-sm" alt="Preview" />
+                <button type="button" id="removeImageBtn" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex flex-col justify-center h-16">
+                <p class="text-sm font-bold text-gray-700">Image Attached</p>
+                <p id="imageFileName" class="text-xs text-gray-500 truncate max-w-xs"></p>
+            </div>
+        </div>
+
+        <div class="p-4 bg-white border-t border-gray-200">
+            <div class="flex items-center gap-3">
+                <input type="hidden" id="jobIdInput" value="@job.Id" />
+                <input type="hidden" id="receiverIdInput" value="@receiver.Id" />
+                <input type="hidden" id="currentUserId" value="@currentUserId" />
+
+                <input type="file" id="imageInput" class="hidden" accept="image/*" />
+                
+                <button type="button" onclick="document.getElementById('imageInput').click();" class="p-3 text-gray-400 hover:text-brandBlue transition bg-gray-50 rounded-xl border border-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                </button>
+
+                <input type="text" id="messageInput" autocomplete="off" class="flex-1 rounded-xl border border-gray-300 px-5 py-3 focus:ring-2 focus:ring-brandBlue outline-none" placeholder="Type a message..." />
+                
+                <button id="sendButton" class="bg-brandBlue text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-blue-700 transition">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+        var chatBox = document.getElementById("chatBox");
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        var connection = new signalR.HubConnectionBuilder().withUrl("/chatHub").build();
+
+        // 1. RECEIVE LOGIC
+        connection.on("ReceiveMessage", function(senderId, message, imageUrl, timeStamp) {
+        var currentUserId = document.getElementById("currentUserId").value;
+        var isMe = senderId === currentUserId;
+                
+        var bubbleClass = isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none";
+        var timeClass = isMe ? "text-indigo-200" : "text-gray-400";
+        var alignment = isMe ? "justify-end" : "justify-start";
+
+        var textClass = message.includes("[SYSTEM WARNING") ? (isMe ? "font-bold text-red-300 italic" : "font-bold text-red-500 italic") : "";
+
+        // Construct Image HTML if URL is provided
+        var imageHtml = "";
+        if (imageUrl && imageUrl.trim() !== "") {
+        imageHtml = `<a href="${imageUrl}" target="_blank"><img src="${imageUrl}" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" /></a>`;
+        }
+
+        // Construct Text HTML if text is provided
+        var textHtml = "";
+        if (message && message.trim() !== "") {
+        textHtml = `<p class="text-sm ${textClass}">${message}</p>`;
+        }
+
+        var msgHtml = `
+        <div class="flex ${alignment}">
+        <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm ${bubbleClass}">
+        ${imageHtml}
+        ${textHtml}
+        <span class="text-[10px] mt-2 block ${timeClass}">${timeStamp}</span>
+        </div>
+        </div>`;
+                
+        chatBox.innerHTML += msgHtml;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        connection.start().catch(err => console.error(err.toString()));
+
+        // --- NEW: IMAGE PREVIEW LOGIC ---
+        const imageInput = document.getElementById("imageInput");
+        const imagePreviewContainer = document.getElementById("imagePreviewContainer");
+        const imagePreview = document.getElementById("imagePreview");
+        const imageFileName = document.getElementById("imageFileName");
+        const removeImageBtn = document.getElementById("removeImageBtn");
+
+        imageInput.addEventListener("change", function(event) {
+        const file = event.target.files[0];
+        if (file) {
+        imagePreviewContainer.classList.remove("hidden");
+        imageFileName.textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+        imagePreview.src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+        }
+        });
+
+        removeImageBtn.addEventListener("click", function() {
+        imageInput.value = "";
+        imagePreviewContainer.classList.add("hidden");
+        imagePreview.src = "";
+        });
+        // ---------------------------------
+
+        // 2. AJAX UPLOAD AND SEND
+        document.getElementById("sendButton").addEventListener("click", async function(event) {
+        event.preventDefault();
+                
+        var jobId = parseInt(document.getElementById("jobIdInput").value);
+        var receiverId = document.getElementById("receiverIdInput").value;
+        var message = document.getElementById("messageInput").value;
+        var fileInput = document.getElementById("imageInput");
+                
+        var finalImageUrl = null;
+
+        // If a file is selected, upload it FIRST
+        if (fileInput.files.length > 0) {
+        document.getElementById("uploadStatus").classList.remove("hidden");
+                    
+        var formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+        let response = await fetch('/Chat/UploadImage', { method: 'POST', body: formData });
+        if (response.ok) {
+        let result = await response.json();
+        finalImageUrl = result.imageUrl;
+        }
+        } catch (error) {
+        console.error("Upload failed", error);
+        alert("Image upload failed!");
+        document.getElementById("uploadStatus").classList.add("hidden");
+        return;
+        }
+                    
+        document.getElementById("uploadStatus").classList.add("hidden");
+        }
+
+        // Prevent sending completely blank messages
+        if (message.trim() === "" && !finalImageUrl) return;
+
+        // Send via SignalR
+        connection.invoke("SendMessage", jobId, receiverId, message, finalImageUrl).catch(err => console.error(err.toString()));
+
+        // Clear inputs & Hide Preview
+        document.getElementById("messageInput").value = "";
+        document.getElementById("imageInput").value = "";
+        document.getElementById("imagePreviewContainer").classList.add("hidden");
+        });
+
+        document.getElementById("messageInput").addEventListener("keypress", function(e) {
+        if (e.key === 'Enter') document.getElementById("sendButton").click();
+        });
+    </script>
+}

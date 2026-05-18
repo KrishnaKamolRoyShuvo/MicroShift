@@ -1,0 +1,211 @@
+﻿@model IEnumerable<MicroShift.Models.Job>
+@{
+    ViewData["Title"] = "Employer Dashboard";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="mb-8 border-b border-gray-200 pb-5">
+        <h1 class="text-3xl font-extrabold text-gray-900">Your Command Center</h1>
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+                <p class="font-bold">Action Blocked</p>
+                <p>@TempData["ErrorMessage"]</p>
+            </div>
+        }
+        <p class="text-gray-500 mt-2">Manage your posted jobs and review applicants.</p>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <h3 class="text-xl font-bold text-gray-700">You haven't posted any jobs yet.</h3>
+            <a asp-controller="Jobs" asp-action="Create" class="mt-4 inline-block px-6 py-3 text-white font-medium bg-gradient-to-r from-brandBlue to-brandPurple rounded-lg shadow-md hover:shadow-lg transition">
+                Post Your First Job
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-8">
+            @foreach (var job in Model)
+            {
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">@job.Title</h2>
+                            <p class="text-sm text-gray-500 mt-1">Posted on @job.CreatedAt.ToString("MMM dd, yyyy") • 📍 @job.Location</p>
+                        </div>
+                        <span class="px-4 py-2 rounded-lg text-sm font-bold @(job.Status == "Open" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800")">
+                            Status: @job.Status
+                        </span>
+                        <div class="flex items-center gap-4">
+                            <span class="px-4 py-2 rounded-lg text-sm font-bold @(job.Status == "Open" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800")">
+                                Status: @job.Status
+                            </span>
+                        
+                            @if (job.Status == "Open")
+                            {
+                                <form asp-controller="Dashboard" asp-action="DeleteJob" method="post" onsubmit="return confirm('Are you sure you want to delete this job post completely?');">
+                                    <input type="hidden" name="jobId" value="@job.Id" />
+                                    <button type="submit" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg text-sm font-bold transition">
+                                        🗑️ Delete Post
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
+                            Applicants (@job.JobApplications.Count)
+                        </h3>
+
+                        @if (!job.JobApplications.Any())
+                        {
+                            <p class="text-gray-500 italic">No workers have applied to this job yet.</p>
+                        }
+                        else
+                        {
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                @foreach (var app in job.JobApplications)
+                                {
+                                    <div class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div>
+                                                <p class="font-bold text-gray-900 text-lg">@app.Worker?.FullName</p>
+                                                <p class="text-sm text-gray-500">Applied: @app.AppliedAt.ToString("MMM dd")</p>
+                                            </div>
+                                            <span class="bg-brandBlue text-white text-xs font-bold px-2 py-1 rounded">@app.Status</span>
+                                        </div>
+                                        
+                                        <div class="text-sm text-gray-700 space-y-1 mb-4">
+                                            <p><strong>Skills:</strong> @(string.IsNullOrEmpty(app.Worker?.Skills) ? "None listed" : app.Worker?.Skills)</p>
+                                            <p><strong>Phone:</strong> @app.Worker?.PhoneNumber</p>
+                                            <p><strong>NID:</strong> ✓ Verified (@app.Worker?.NationalIdNumber)</p>
+                                        </div>
+
+                                        @if (app.Status == "Pending" && job.Status == "Open")
+                                        {
+                                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                                <form asp-controller="Dashboard" asp-action="HireWorker" method="post">
+                                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                                    <button type="submit" class="w-full py-2 bg-green-500 text-white font-bold rounded-lg shadow hover:bg-green-600 transition text-sm">
+                                                        Accept
+                                                    </button>
+                                                </form>
+        
+                                                <form asp-controller="Dashboard" asp-action="RejectWorker" method="post">
+                                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                                    <button type="submit" class="w-full py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-200 transition text-sm">
+                                                        Reject
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        }
+
+                                        <div class="md:col-span-2 flex items-center gap-3 justify-end">
+    
+                                            <a asp-controller="Chat" asp-action="Index" asp-route-jobId="@job.Id" asp-route-receiverId="@app.WorkerId" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-200 shadow-sm">
+                                                💬 Chat
+                                            </a>
+
+                                            @if (app.Status == "Pending")
+                                            {
+                                                <form asp-action="AcceptWorker" asp-route-applicationId="@app.Id" method="post">
+                                                    <button type="submit" class="px-6 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 shadow">Accept</button>
+                                                </form>
+                                                <form asp-action="RejectWorker" asp-route-applicationId="@app.Id" method="post">
+                                                    <button type="submit" class="px-6 py-2 bg-red-50 text-red-700 text-sm font-bold rounded-lg hover:bg-red-100 border border-red-200">Reject</button>
+                                                </form>
+                                            }
+                                            else if (app.Status == "Accepted")
+                                            {
+
+                                                <span class="px-4 py-1.5 text-xs font-bold bg-blue-100 text-brandBlue rounded-full">Hired!</span>
+                                            }
+                                            else
+                                            {
+
+                                                <span class="px-4 py-1.5 text-xs font-bold bg-gray-100 text-gray-700 rounded-full">@app.Status</span>
+                                            }
+                                        </div>
+
+                                        @if (app.Status == "Pending" && job.Status == "Open")
+                                        {
+                                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                                <form asp-controller="Dashboard" asp-action="HireWorker" method="post">
+                                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                                    <button type="submit" class="w-full py-2 bg-green-500 text-white font-bold rounded-lg shadow hover:bg-green-600 transition text-sm">Accept</button>
+                                                </form>
+                                                <form asp-controller="Dashboard" asp-action="RejectWorker" method="post">
+                                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                                    <button type="submit" class="w-full py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-200 transition text-sm">Reject</button>
+                                                </form>
+                                            </div>
+                                        }
+                                        else if (app.Status == "Accepted" && job.Status == "InProgress")
+                                        {
+                                            <div class="w-full py-2 text-center bg-blue-100 text-blue-800 font-bold rounded-lg border border-blue-200 mb-2">
+                                                Currently Hired - Awaiting Worker
+                                            </div>
+                                            <form asp-controller="Dashboard" asp-action="RejectWorker" method="post" onsubmit="return confirm('Are you sure you want to fire this worker? The job will be reopened to the public.');">
+                                                <input type="hidden" name="applicationId" value="@app.Id" />
+                                                <button type="submit" class="w-full py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-bold rounded-lg transition text-sm">
+                                                    Fire Worker & Reopen Job
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (app.Status == "ReviewPending")
+                                        {
+                                            <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-2">
+                                                <p class="text-sm font-bold text-yellow-800 mb-2">⚠️ Worker Marked as Done</p>
+                                                
+                                                @if (!string.IsNullOrEmpty(app.WorkerEvidenceUrl))
+                                                {
+                                                    <a href="@app.WorkerEvidenceUrl" target="_blank">
+                                                        <img src="@app.WorkerEvidenceUrl" class="w-full h-32 object-cover rounded-lg mb-3 border border-gray-300 hover:opacity-90 transition" alt="Worker Evidence" />
+                                                    </a>
+                                                    <p class="text-xs text-gray-500 mb-3">Photo submitted on: @app.WorkerEvidenceDate?.ToString("MMM dd, hh:mm tt")</p>
+                                                }
+
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <form asp-controller="Dashboard" asp-action="ApproveJob" method="post" onsubmit="return confirm('Approving will finalize the job. Proceed?');">
+                                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                                        <button type="submit" class="w-full py-2 bg-green-500 text-white font-bold rounded-lg shadow hover:bg-green-600 transition text-sm">
+                                                            Approve & Pay
+                                                        </button>
+                                                    </form>
+                                                    
+                                                    <form asp-controller="Dashboard" asp-action="DisputeJob" method="post" onsubmit="return confirm('This will lock the job and notify the SuperAdmin. Are you sure?');">
+                                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                                        <button type="submit" class="w-full py-2 bg-red-600 text-white font-bold rounded-lg shadow hover:bg-red-700 transition text-sm">
+                                                            Raise Dispute
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (app.Status == "Completed")
+                                        {
+                                            <span class="px-4 py-1.5 text-xs font-bold bg-green-100 text-green-700 rounded-full">Completed</span>
+                                            <a asp-controller="Reviews" asp-action="Create" asp-route-jobId="@job.Id" asp-route-revieweeId="@app.WorkerId" class="px-4 py-1.5 text-xs font-bold bg-yellow-400 text-yellow-900 rounded-lg hover:bg-yellow-500 transition shadow-sm ml-2">
+                                                ⭐ Rate Worker
+                                            </a>
+                                        }
+                                        else if (app.Status == "Disputed")
+                                        {
+                                            <div class="w-full py-3 text-center bg-red-100 text-red-800 font-black rounded-lg border border-red-300">
+                                                🚨 UNDER ADMIN REVIEW
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,150 @@
+﻿@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <div class="max-w-3xl w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
+        <div class="text-center">
+            <h2 class="mt-2 text-3xl font-extrabold text-gray-900">Join MicroShift</h2>
+            <p class="mt-2 text-sm text-gray-600">Complete your professional profile to start</p>
+        </div>
+        
+        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="mt-8 space-y-8">
+            <div asp-validation-summary="ModelOnly" class="text-red-500 text-sm mb-4" role="alert"></div>
+
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">1. Account Type</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none has-[:checked]:border-brandBlue has-[:checked]:bg-indigo-50 has-[:checked]:ring-2 transition">
+                        <input type="radio" asp-for="Input.Role" value="Worker" class="sr-only" checked>
+                        <span class="font-medium text-gray-900 text-sm text-center w-full">Find Work (Worker)</span>
+                    </label>
+                    <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none has-[:checked]:border-brandBlue has-[:checked]:bg-indigo-50 has-[:checked]:ring-2 transition">
+                        <input type="radio" asp-for="Input.Role" value="Employer" class="sr-only">
+                        <span class="font-medium text-gray-900 text-sm text-center w-full">Post Jobs (Employer)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">2. Personal Verification</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Input.FullName" class="block text-sm font-medium text-gray-700">Full Name</label>
+                        <input asp-for="Input.FullName" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue focus:border-brandBlue sm:text-sm" placeholder="e.g. Rafin Ali" />
+                    </div>
+                    <div>
+                        <label asp-for="Input.DateOfBirth" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input asp-for="Input.DateOfBirth" type="date" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" />
+                    </div>
+                    <div>
+                        <label asp-for="Input.NationalIdNumber" class="block text-sm font-medium text-gray-700">National ID (NID)</label>
+                        <input asp-for="Input.NationalIdNumber" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="For fraud prevention" />
+                    </div>
+                    <div>
+                        <label asp-for="Input.PhoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                        <input asp-for="Input.PhoneNumber" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="+880..." />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">3. Location Setup</h3>
+                <p class="text-xs text-gray-500 mb-4">Click on the map to set your exact location. This helps us find nearby jobs.</p>
+                
+                <div id="map" class="h-64 w-full rounded-lg border-2 border-gray-300 mb-4 z-0"></div>
+                
+                <input type="hidden" asp-for="Input.Latitude" id="lat" />
+                <input type="hidden" asp-for="Input.Longitude" id="lng" />
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Input.Location" class="block text-sm font-medium text-gray-700">City / Area Name</label>
+                        <input asp-for="Input.Location" id="cityInput" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="e.g. Dhaka" />
+                    </div>
+                    <div>
+                        <label asp-for="Input.Address" class="block text-sm font-medium text-gray-700">Full Address</label>
+                        <input asp-for="Input.Address" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="Street, House No." />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">4. Professional Profile</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Input.Skills" class="block text-sm font-medium text-gray-700">Skills (Comma separated)</label>
+                        <input asp-for="Input.Skills" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="Delivery, Plumbing, IT..." />
+                    </div>
+                    <div>
+                        <label asp-for="Input.Interests" class="block text-sm font-medium text-gray-700">Interests</label>
+                        <input asp-for="Input.Interests" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" placeholder="What kind of work?" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">5. Account Security</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label asp-for="Input.Email" class="block text-sm font-medium text-gray-700">Email address</label>
+                        <input asp-for="Input.Email" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" />
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label asp-for="Input.Password" class="block text-sm font-medium text-gray-700">Password</label>
+                            <input asp-for="Input.Password" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" />
+                        </div>
+                        <div>
+                            <label asp-for="Input.ConfirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                            <input asp-for="Input.ConfirmPassword" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-brandBlue sm:text-sm" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-4 px-4 text-white bg-gradient-to-r from-brandBlue to-brandPurple rounded-lg shadow-lg font-bold hover:shadow-xl transition">
+                Create Secure Account
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    
+    <script>
+        // Initialize Map centered on Dhaka, Bangladesh
+        var map = L.map('map').setView([23.8103, 90.4125], 12);
+        
+        // Add OpenStreetMap tiles (Free)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var marker;
+
+        // When user clicks the map, drop a pin and save coordinates
+        map.on('click', function(e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+            
+        // Remove old marker if it exists
+        if(marker) {
+        map.removeLayer(marker);
+        }
+            
+        // Add new marker
+        marker = L.marker([lat, lng]).addTo(map);
+            
+        // Update hidden form fields
+        document.getElementById('lat').value = lat;
+        document.getElementById('lng').value = lng;
+        });
+    </script>
+}

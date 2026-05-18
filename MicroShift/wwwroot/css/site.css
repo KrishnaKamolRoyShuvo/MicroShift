@@ -1,0 +1,336 @@
+/*html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}*/
+
+
+
+/* =========================
+   GLOBAL RESET
+========================= */
+/** {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    transition: all 0.25s ease;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #F8FAFC;
+    color: #0F172A;
+}*/
+
+/* =========================
+   NAVBAR (GLASS PREMIUM)
+========================= */
+/*.navbar {
+    backdrop-filter: blur(14px);
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-radius: 16px;
+    margin: 16px 24px;
+    padding: 12px 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #5B5FFF !important;
+}
+
+.nav-link {
+    font-weight: 500;
+    color: #0F172A !important;
+    margin-left: 15px;
+}
+
+    .nav-link:hover {
+        color: #5B5FFF !important;
+    }*/
+
+/* =========================
+   HERO SECTION
+========================= */
+/*.hero {
+    padding: 120px 20px;
+    text-align: center;
+}
+
+    .hero h1 {
+        font-size: 3.2rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #5B5FFF, #FF4D8D);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+        font-size: 1.2rem;
+        color: #64748B;
+        margin-top: 15px;
+    }*/
+
+/* =========================
+   BUTTONS
+========================= */
+/*.btn-primary {
+    background: linear-gradient(135deg, #5B5FFF, #7C7FFF);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 26px;
+    font-weight: 500;
+    color: white;
+    box-shadow: 0 8px 25px rgba(91, 95, 255, 0.4);
+}
+
+    .btn-primary:hover {
+        transform: scale(1.06);
+        box-shadow: 0 12px 35px rgba(91, 95, 255, 0.5);
+    }*/
+
+/* Outline Button */
+/*.btn-outline-primary {
+    border: 2px solid #5B5FFF;
+    color: #5B5FFF;
+    border-radius: 12px;
+    padding: 12px 26px;
+    font-weight: 500;
+    background: transparent;
+}
+
+    .btn-outline-primary:hover {
+        background: #5B5FFF;
+        color: white;
+        transform: scale(1.06);
+    }*/
+
+/* =========================
+   CARDS (SOFT MODERN)
+========================= */
+/*.card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    border: none;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+    .card:hover {
+        transform: translateY(-6px);
+    }*/
+
+/* =========================
+   FOOTER
+========================= */
+/*.footer {
+    margin-top: 50px;
+    padding: 25px 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #64748B;
+}*/
+
+/* =========================
+   LINKS
+========================= */
+/*a {
+    text-decoration: none;
+}*/
+
+/* =========================
+   CONTAINER
+========================= */
+/*.container {
+    max-width: 1200px;
+}*/
+
+
+
+/*New updated css*/
+/* =========================
+   GLOBAL
+========================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #F9FAFB;
+    color: #111827;
+}
+
+/* =========================
+   NAVBAR (FLOATING GLASS)
+========================= */
+.navbar {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(16px);
+    border-radius: 20px;
+    margin: 20px auto;
+    padding: 14px 28px;
+    width: 92%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: #6C63FF !important;
+}
+
+.nav-link {
+    color: #374151 !important;
+    font-weight: 500;
+    margin-left: 18px;
+}
+
+    .nav-link:hover {
+        color: #6C63FF !important;
+    }
+
+/* =========================
+   HERO SECTION
+========================= */
+.hero {
+    padding: 140px 20px 100px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+
+}
+    .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        /* Grid lines */
+        background-image: linear-gradient(to right, rgba(108, 99, 255, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(108, 99, 255, 0.08) 1px, transparent 1px);
+        background-size: 40px 40px;
+        /* Fade effect (VERY IMPORTANT) */
+        mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+        -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+        pointer-events: none;
+    }
+    .hero > * {
+        position: relative;
+        z-index: 2;
+    }
+
+
+    .hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        background: linear-gradient(90deg, #6C63FF, #22D3EE);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+        font-size: 1.2rem;
+        color: #6B7280;
+        margin-top: 18px;
+    }
+
+/* =========================
+   BUTTONS (MODERN SOFT)
+========================= */
+.btn-primary {
+    background: linear-gradient(135deg, #6C63FF, #4F46E5);
+    border: none;
+    border-radius: 14px;
+    padding: 12px 28px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(108, 99, 255, 0.35);
+}
+
+    .btn-primary:hover {
+        transform: scale(1.07);
+        box-shadow: 0 15px 40px rgba(108, 99, 255, 0.45);
+    }
+
+/* Outline Button */
+.btn-outline-primary {
+    border: 2px solid #6C63FF;
+    color: #6C63FF;
+    border-radius: 14px;
+    padding: 12px 28px;
+    font-weight: 500;
+}
+
+    .btn-outline-primary:hover {
+        background: #6C63FF;
+        color: white;
+        transform: scale(1.07);
+    }
+
+/* =========================
+   SECTION SPACING
+========================= */
+.section {
+    padding: 80px 0;
+}
+
+/* =========================
+   CARDS (PREMIUM FLOAT)
+========================= */
+.card {
+    border: none;
+    border-radius: 20px;
+    background: #ffffff;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+    .card:hover {
+        transform: translateY(-8px);
+    }
+
+/* =========================
+   FOOTER
+========================= */
+.footer {
+    margin-top: auto;
+    padding: 30px 0;
+    text-align: center;
+    color: #6B7280;
+    background: transparent;
+}
+main {
+    min-height: 70vh;
+}
+html, body {
+    height: 100%;
+}
