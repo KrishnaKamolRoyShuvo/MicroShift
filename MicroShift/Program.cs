@@ -25,6 +25,23 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+// --- DATA SEEDER INJECTION ---
+// This runs our DbSeeder to ensure the Admin account exists before the app fully starts
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        await MicroShift.Data.DbSeeder.SeedAdminUserAsync(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the Admin user.");
+    }
+}
+// -----------------------------
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

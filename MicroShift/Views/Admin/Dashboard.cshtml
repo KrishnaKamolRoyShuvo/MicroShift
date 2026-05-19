@@ -1,0 +1,216 @@
+﻿@{
+    ViewData["Title"] = "Command Center";
+    // Setup for charts
+    var labelsJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.MonthLabels);
+    var revenueJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.MonthlyRevenueData);
+    var statusJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.StatusDistribution);
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    
+    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">System Overview</h1>
+            <p class="text-gray-500 mt-1 font-medium">Real-time financial and operational metrics.</p>
+        </div>
+        <div class="text-right">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span> Systems Operational
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-16 h-16 bg-brandBlue opacity-10 rounded-bl-full"></div>
+            <p class="text-sm font-bold text-gray-500 mb-1">MicroShift Net Revenue</p>
+            <h2 class="text-3xl font-black text-gray-900">৳@ViewBag.TotalRevenue.ToString("N2")</h2>
+            
+            <div class="mt-4 flex items-center text-sm font-bold">
+                @if (ViewBag.GrowthPercentage >= 0)
+                {
+                    <span class="text-green-500 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        +@ViewBag.GrowthPercentage%
+                    </span>
+                }
+                else
+                {
+                    <span class="text-red-500 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                        @ViewBag.GrowthPercentage%
+                    </span>
+                }
+                <span class="text-gray-400 ml-2">vs last month</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-sm font-bold text-gray-500 mb-1">Total System Cashflow</p>
+            <h2 class="text-3xl font-black text-gray-900">৳@ViewBag.TotalCashflow.ToString("N2")</h2>
+            <p class="text-xs text-gray-400 mt-4 font-medium">All money passing through platform.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-yellow-100 bg-yellow-50/30">
+            <p class="text-sm font-bold text-yellow-700 mb-1">Active / Escrow Funds</p>
+            <h2 class="text-3xl font-black text-yellow-900">৳@ViewBag.OngoingMoney.ToString("N2")</h2>
+            <p class="text-xs text-yellow-600 mt-4 font-medium">Locked in active jobs.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border @(ViewBag.DisputedMoney > 0 ? "border-red-200 bg-red-50/50" : "border-gray-100")">
+            <p class="text-sm font-bold @(ViewBag.DisputedMoney > 0 ? "text-red-700" : "text-gray-500") mb-1">Disputed Funds</p>
+            <h2 class="text-3xl font-black @(ViewBag.DisputedMoney > 0 ? "text-red-600" : "text-gray-900")">৳@ViewBag.DisputedMoney.ToString("N2")</h2>
+            @if (ViewBag.DisputedMoney > 0)
+            {
+                <a href="#" class="text-xs text-red-600 font-bold hover:underline mt-4 inline-block">Resolve Disputes →</a>
+            }
+            else
+            {
+                <p class="text-xs text-gray-400 mt-4 font-medium">Zero pending disputes.</p>
+            }
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Revenue Growth (Last 6 Months)</h3>
+            <div class="h-64 w-full relative">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Job Status Health</h3>
+            <div class="h-64 w-full relative flex justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-gray-900">Recent Completed Payouts</h3>
+            </div>
+            <ul class="divide-y divide-gray-100">
+                @foreach (var job in ViewBag.RecentTransactions)
+                {
+                    <li class="p-4 hover:bg-gray-50 transition flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">@job.Title</p>
+                            <p class="text-xs text-gray-500">Finished @job.CreatedAt.ToString("MMM dd, yyyy")</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-green-600">৳@job.PaymentAmount</p>
+                            <p class="text-[10px] text-gray-400">Commission: ৳@((job.PaymentAmount * (decimal)(job.FinalCommissionPercentage / 100)).ToString("0.00"))</p>
+                        </div>
+                    </li>
+                }
+                @if (ViewBag.RecentTransactions.Count == 0)
+                {
+                    <li class="p-6 text-center text-gray-400 text-sm">No completed transactions yet.</li>
+                }
+            </ul>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-red-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
+                <h3 class="font-bold text-red-900">Active Emergency Jobs</h3>
+                <span class="bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full font-bold">@ViewBag.EmergencyJobs.Count</span>
+            </div>
+            <ul class="divide-y divide-gray-100">
+                @foreach (var job in ViewBag.EmergencyJobs)
+                {
+                    <li class="p-4 hover:bg-gray-50 transition flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">@job.Title</p>
+                            <p class="text-xs text-red-500">Posted @job.CreatedAt.ToString("MMM dd, h:mm tt")</p>
+                        </div>
+                        <a href="/Jobs/Details/@job.Id" class="text-brandBlue text-xs font-bold hover:underline">View</a>
+                    </li>
+                }
+                @if (ViewBag.EmergencyJobs.Count == 0)
+                {
+                    <li class="p-6 text-center text-gray-400 text-sm">No active emergency jobs. Platform is calm.</li>
+                }
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            
+        // --- 1. Revenue Line Chart ---
+        const revCtx = document.getElementById('revenueChart').getContext('2d');
+            
+        // Create a nice gradient fill for the line chart
+        let gradient = revCtx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(79, 70, 229, 0.4)'); // brandBlue with opacity
+        gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+
+        new Chart(revCtx, {
+        type: 'line',
+        data: {
+        labels: @Html.Raw(labelsJson),
+        datasets: [{
+        label: 'Net Revenue (৳)',
+        data: @Html.Raw(revenueJson),
+        borderColor: '#4F46E5', // brandBlue
+        backgroundColor: gradient,
+        borderWidth: 3,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#4F46E5',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        fill: true,
+        tension: 0.4 // Makes the line smoothly curved
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+        y: { beginAtZero: true, grid: { borderDash: [4, 4] } },
+        x: { grid: { display: false } }
+        }
+        }
+        });
+
+        // --- 2. Job Status Doughnut Chart ---
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+        labels: ['Open', 'In Progress', 'Completed', 'Disputed'],
+        datasets: [{
+        data: @Html.Raw(statusJson),
+        backgroundColor: [
+        '#3B82F6', // Blue (Open)
+        '#F59E0B', // Yellow (In Progress)
+        '#10B981', // Green (Completed)
+        '#EF4444'  // Red (Disputed)
+        ],
+        borderWidth: 0,
+        hoverOffset: 4
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%', // Makes the ring thinner
+        plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } }
+        }
+        }
+        });
+        });
+    </script>
+}
