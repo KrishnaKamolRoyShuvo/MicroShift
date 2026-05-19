@@ -98,6 +98,16 @@ namespace MicroShift.Areas.Identity.Pages.Account
                     if (result.Succeeded)
                     {
                         _logger.LogInformation("User logged in.");
+
+                        // --- ADMIN REDIRECT FIX ---
+                        // 'user' is already declared at the top of this method, so we just reuse it!
+                        if (await _userManager.IsInRoleAsync(user, "Admin"))
+                        {
+                            // Send admins directly to their command center
+                            return LocalRedirect("~/Admin/Dashboard");
+                        }
+
+                        // Send normal users to wherever they were trying to go
                         return LocalRedirect(returnUrl);
                     }
                     if (result.RequiresTwoFactor)

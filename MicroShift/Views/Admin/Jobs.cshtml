@@ -1,0 +1,96 @@
+﻿@model IEnumerable<MicroShift.Models.Job>
+@{
+    ViewData["Title"] = "Job Moderation";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    
+    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Content Moderation</h1>
+            <p class="text-gray-500 mt-1 font-medium">Monitor active marketplace listings and remove policy violations.</p>
+        </div>
+        <div>
+            <form method="get" class="flex items-center gap-2">
+                <select name="statusFilter" class="rounded-xl border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-brandBlue outline-none" onchange="this.form.submit()">
+                    <option value="All" selected="@(ViewBag.CurrentFilter == "All")">All Jobs</option>
+                    <option value="Open" selected="@(ViewBag.CurrentFilter == "Open")">Active (Open)</option>
+                    <option value="Cancelled" selected="@(ViewBag.CurrentFilter == "Cancelled")">Takedowns / Cancelled</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                    <th class="p-4 font-bold">Job Details</th>
+                    <th class="p-4 font-bold">Category</th>
+                    <th class="p-4 font-bold">Employer</th>
+                    <th class="p-4 font-bold">Escrow</th>
+                    <th class="p-4 font-bold text-right">Moderation Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                @foreach (var job in Model)
+                {
+                    <tr class="@(job.Status == "Cancelled" ? "bg-red-50 opacity-60" : "hover:bg-gray-50") transition">
+                        <td class="p-4">
+                            <a href="/Jobs/Details/@job.Id" target="_blank" class="font-bold text-gray-900 hover:text-brandBlue transition">@job.Title <span class="text-xs text-gray-400 font-normal ml-1">↗</span></a>
+                            <p class="text-xs text-gray-500 mt-1 max-w-xs truncate">@job.Description</p>
+                        </td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 bg-indigo-50 text-brandBlue rounded text-xs font-bold">@(job.Category?.Name ?? "Uncategorized")</span>
+                        </td>
+                        <td class="p-4 text-gray-600 font-medium text-xs">
+                            @(job.Employer?.FullName ?? job.Employer?.Email ?? "Unknown")
+                        </td>
+                        <td class="p-4 font-black text-gray-900">
+                            ৳@job.PaymentAmount
+                        </td>
+                        <td class="p-4 text-right">
+                            @if (job.Status == "Open" || job.Status == "InProgress")
+                            {
+                                <form asp-action="TakeDownJob" method="post" class="inline flex justify-end gap-2" onsubmit="return confirm('Are you sure you want to pull this job down? Escrow will be marked for refund.');">
+                                    <input type="hidden" name="jobId" value="@job.Id" />
+                                    <input type="text" name="reason" placeholder="Reason (e.g. Spam)" required class="text-xs border border-gray-300 rounded px-2 py-1 w-32 outline-none focus:border-red-500" />
+                                    <button type="submit" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-bold hover:bg-red-500 hover:text-white transition">
+                                        Take Down
+                                    </button>
+                                </form>
+                            }
+                            else if (job.Status == "Cancelled")
+                            {
+                                <div class="flex flex-col items-end gap-2">
+                                    <div>
+                                        <span class="text-red-500 font-bold text-xs uppercase tracking-wider">Removed</span>
+                                        @if (!string.IsNullOrEmpty(job.AdminDisputeNote))
+                                        {
+                                            <p class="text-[10px] text-gray-500 mt-1">@job.AdminDisputeNote</p>
+                                        }
+                                    </div>
+                                    <form asp-action="RestoreJob" method="post" onsubmit="return confirm('Restore this job to the public feed?');">
+                                        <input type="hidden" name="jobId" value="@job.Id" />
+                                        <button type="submit" class="bg-green-50 text-green-700 border border-green-200 px-3 py-1 rounded text-[10px] font-bold hover:bg-green-500 hover:text-white transition">
+                                            ↺ Restore Job
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-gray-400 font-bold text-xs">@job.Status</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="5" class="p-8 text-center text-gray-500">No jobs found matching this filter.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

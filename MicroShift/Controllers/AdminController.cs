@@ -280,5 +280,101 @@ namespace MicroShift.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Disputes)); // Kick them back to the queue
         }
+
+        // --- 7. JOB MODERATION (God Mode Feed) ---
+        public async Task<IActionResult> Jobs(string statusFilter = "Open")
+        {
+            // Fetch jobs with their Employer and Category details
+            var jobs = _context.Jobs
+                .Include(j => j.Employer)
+                .Include(j => j.Category)
+                .AsQueryable();
+
+            // Default to showing Open jobs unless specified
+            if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "All")
+            {
+                jobs = jobs.Where(j => j.Status == statusFilter);
+            }
+
+            ViewBag.CurrentFilter = statusFilter;
+            return View(await jobs.OrderByDescending(j => j.CreatedAt).ToListAsync());
+        }
+
+        // --- 8. FORCE TAKEDOWN A JOB ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TakeDownJob(int jobId, string reason)
+        {
+            var job = await _context.Jobs.FindAsync(jobId);
+            if (job != null)
+            {
+                job.Status = "Cancelled";
+                job.AdminDisputeNote = $"ADMIN TAKEDOWN: {reason}";
+
+                // Note: If you have Stripe integrated, you would trigger the refund API here.
+
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Jobs));
+        }
+
+        // --- 8.5 RESTORE A TAKEN DOWN JOB ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RestoreJob(int jobId)
+        {
+            var job = await _context.Jobs.FindAsync(jobId);
+            if (job != null && job.Status == "Cancelled")
+            {
+                job.Status = "Open"; // Bring it back to life
+                job.AdminDisputeNote = null; // Clear the takedown reason
+
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Jobs));
+        }
+
+        // --- 9. PLATFORM SETTINGS (Category & Commission Control) ---
+        public async Task<IActionResult> Settings()
+        {
+            var categories = await _context.Categories.ToListAsync();
+            return View(categories);
+        }
+
+        // --- 10. UPDATE COMMISSION PERCENTAGE ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateCategory(int id, double commissionPercentage)
+        {
+            var category = await _context.Categories.FindAsync(id);
+            if (category != null)
+            {
+                // Ensure commission stays between 0 and 100
+                if (commissionPercentage >= 0 && commissionPercentage <= 100)
+                {
+                    category.CategoryCommissionPercentage = commissionPercentage;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            return RedirectToAction(nameof(Settings));
+        }
+
+        // --- 11. ADD NEW CATEGORY ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddCategory(string name, double commissionPercentage)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                var category = new Category
+                {
+                    Name = name,
+                    CategoryCommissionPercentage = commissionPercentage
+                };
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Settings));
+        }
     }
 }
