@@ -1,0 +1,124 @@
+﻿@model IEnumerable<MicroShift.Models.UserModerationViewModel>
+@{
+    ViewData["Title"] = "User Moderation";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    
+    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Trust & Safety</h1>
+            <p class="text-gray-500 mt-1 font-medium">Manage user accounts, monitor disputes, and enforce platform rules.</p>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
+        <form method="get" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="flex-grow">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Search User</label>
+                <input type="text" name="searchQuery" value="@ViewBag.SearchQuery" placeholder="Search by name or email..." class="w-full rounded-xl border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-brandBlue outline-none" />
+            </div>
+            
+            <div class="w-full md:w-48">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Role</label>
+                <select name="roleFilter" class="w-full rounded-xl border border-gray-300 px-4 py-2 outline-none">
+                    <option value="">All Roles</option>
+                    <option value="Worker">Workers Only</option>
+                    <option value="Employer">Employers Only</option>
+                </select>
+            </div>
+
+            <div class="w-full md:w-48">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Safety Flag</label>
+                <select name="disputeFilter" class="w-full rounded-xl border border-gray-300 px-4 py-2 outline-none">
+                    <option value="">All Users</option>
+                    <option value="HasDisputes">Has Dispute History</option>
+                </select>
+            </div>
+
+            <button type="submit" class="bg-gray-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition h-[42px]">
+                Filter
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                    <th class="p-4 font-bold">User Identity</th>
+                    <th class="p-4 font-bold">Platform Stats</th>
+                    <th class="p-4 font-bold">Financials</th>
+                    <th class="p-4 font-bold text-center">Safety</th>
+                    <th class="p-4 font-bold text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                @foreach (var u in Model)
+                {
+                    <tr class="@(u.IsSuspended ? "bg-red-50 opacity-75" : "hover:bg-gray-50") transition">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0">
+                                    @(u.FullName.Substring(0, 1).ToUpper())
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">@u.FullName</p>
+                                    <p class="text-xs text-gray-500">@u.Email</p>
+                                    <span class="inline-block mt-1 px-2 py-0.5 bg-indigo-100 text-brandBlue text-[10px] font-bold rounded">@u.Role</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <p class="text-xs text-gray-600"><span class="font-bold text-gray-900">@u.TotalCompleted</span> Completed</p>
+                            @if (u.Role == "Worker")
+                            {
+                                <p class="text-xs text-gray-600"><span class="font-bold text-gray-900">@u.ApplicationsCount</span> Applications</p>
+                            }
+                        </td>
+                        <td class="p-4">
+                            <p class="text-xs text-green-600 font-bold">Earned: ৳@u.TotalEarnings</p>
+                            <p class="text-xs text-yellow-600 font-bold">Active: ৳@u.OngoingWorkValue</p>
+                        </td>
+                        <td class="p-4 text-center">
+                            @if (u.DisputeCount > 0)
+                            {
+                                <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold">@u.DisputeCount Disputes</span>
+                            }
+                            else
+                            {
+                                <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Clean Record</span>
+                            }
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                
+                                <form asp-action="ForceResetPassword" method="post" class="inline" onsubmit="return confirm('Override password for @u.FullName?');">
+                                    <input type="hidden" name="userId" value="@u.Id" />
+                                    <input type="hidden" name="newPassword" value="TempPass123!" />
+                                    <button type="submit" class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-md text-xs font-bold hover:bg-gray-200 transition" title="Force Reset to: TempPass123!">
+                                        Reset Pass
+                                    </button>
+                                </form>
+
+                                <form asp-action="ToggleSuspend" method="post" class="inline">
+                                    <input type="hidden" name="userId" value="@u.Id" />
+                                    @if (u.IsSuspended)
+                                    {
+                                        <button type="submit" class="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-green-600 transition">Unban</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-red-600 transition" onclick="return confirm('Suspend this user indefinitely?');">Suspend</button>
+                                    }
+                                </form>
+
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

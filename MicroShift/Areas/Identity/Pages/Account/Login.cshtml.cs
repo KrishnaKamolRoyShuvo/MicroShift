@@ -97,33 +97,25 @@ namespace MicroShift.Areas.Identity.Pages.Account
 
                     if (result.Succeeded)
                     {
-                        // SUCCESS! Reset all penalty counters back to zero.
-                        user.RecoveryFailedAttempts = 0;
-                        user.RecoveryLockoutEnd = null;
-                        await _userManager.UpdateAsync(user);
-
                         _logger.LogInformation("User logged in.");
-                        return LocalRedirect(returnUrl ?? "~/");
+                        return LocalRedirect(returnUrl);
+                    }
+                    if (result.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    }
+                    if (result.IsLockedOut)
+                    {
+                        _logger.LogWarning("User account suspended/locked out.");
+
+                        // THIS IS OUR CUSTOM FIX: 
+                        // Instead of redirecting to a generic lockout page, we push a bright red error to the login screen.
+                        ModelState.AddModelError(string.Empty, "⚠️ ACCESS DENIED: Your account has been suspended by the administration due to a violation of platform policies.");
+                        return Page();
                     }
                     else
                     {
-                        // FAILED PASSWORD: Apply the 3-Strike Rule
-                        user.RecoveryFailedAttempts++;
-
-                        if (user.RecoveryFailedAttempts >= 3)
-                        {
-                            // Strike 3: Freeze the account!
-                            user.IsAccountFrozen = true;
-                            await _userManager.UpdateAsync(user);
-
-                            // Send them straight to NID verification
-                            TempData["RecoveryEmail"] = user.Email;
-                            return RedirectToAction("UnlockAccount", "Password");
-                        }
-
-                        // Save the failed attempt and warn them
-                        await _userManager.UpdateAsync(user);
-                        ModelState.AddModelError(string.Empty, $"Invalid login attempt. You have {3 - user.RecoveryFailedAttempts} attempt(s) left before your account is frozen.");
+                        ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                         return Page();
                     }
                 }

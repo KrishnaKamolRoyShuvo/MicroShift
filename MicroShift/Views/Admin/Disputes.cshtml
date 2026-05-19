@@ -1,0 +1,69 @@
+﻿@model IEnumerable<MicroShift.Models.Job>
+@{
+    ViewData["Title"] = "Dispute Queue";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    
+    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Active Disputes</h1>
+            <p class="text-gray-500 mt-1 font-medium">Review evidence and resolve conflicts between users.</p>
+        </div>
+        <div>
+            <span class="bg-red-100 text-red-800 text-sm font-bold px-4 py-2 rounded-lg shadow-sm border border-red-200">
+                @Model.Count() Cases Pending
+            </span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                    <th class="p-4 font-bold">Job Title / ID</th>
+                    <th class="p-4 font-bold">Employer</th>
+                    <th class="p-4 font-bold">Escrow Amount</th>
+                    <th class="p-4 font-bold">Date Raised</th>
+                    <th class="p-4 font-bold text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                @foreach (var job in Model)
+                {
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-4">
+                            <p class="font-bold text-gray-900">@job.Title</p>
+                            <p class="text-xs text-gray-500">ID: #@job.Id</p>
+                        </td>
+                        <td class="p-4 text-gray-600 font-medium">
+                            @(job.Employer?.FullName ?? job.Employer?.Email ?? "Unknown")
+                        </td>
+                        <td class="p-4 font-black text-brandBlue">
+                            ৳@job.PaymentAmount
+                        </td>
+                        <td class="p-4 text-gray-500">
+                            @job.CreatedAt.ToString("MMM dd, yyyy")
+                        </td>
+                        <td class="p-4 text-right">
+                            <a href="/Admin/DisputeDetails/@job.Id" class="inline-block bg-gray-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-black transition shadow-sm text-xs">
+                                Open Case
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="p-12 text-center text-gray-400">
+                            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p class="font-bold text-lg">No active disputes.</p>
+                            <p class="text-sm mt-1">All is peaceful in the marketplace.</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

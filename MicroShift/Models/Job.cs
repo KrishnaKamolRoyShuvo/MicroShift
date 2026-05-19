@@ -90,5 +90,15 @@ namespace MicroShift.Models
 
         [Required]
         public string Shift { get; set; } = "Flexible"; // "Day", "Night", "Flexible"
+
+        // --- Admin & Dispute Tracking ---
+        public string? AdminDisputeNote { get; set; }
+        public string? FaultAssignedTo { get; set; } // e.g. "Worker", "Employer", "Mutual"
+
+        // --- Image EXIF Forensics ---
+        public DateTime? ExifCaptureTime { get; set; }
+        public double? ExifLatitude { get; set; }
+        public double? ExifLongitude { get; set; }
+
     }
 }

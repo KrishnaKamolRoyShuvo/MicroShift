@@ -8,6 +8,8 @@ using MicroShift.Models;
 using MicroShift.Utils;
 using MicroShift.Helpers;
 using Microsoft.AspNetCore.Hosting;
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 
 namespace MicroShift.Controllers
 {
@@ -168,39 +170,75 @@ namespace MicroShift.Controllers
             job.FinalCommissionPercentage = category?.CategoryCommissionPercentage ?? 10.0;
 
             // --- IMAGE UPLOAD LOGIC ---
+            // --- IMAGE UPLOAD & EXIF FORENSICS LOGIC ---
             if (images != null && images.Count > 0)
-            {
-                // Ensure the upload folder exists
-                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
-                Directory.CreateDirectory(uploadsFolder);
-
-                int imageCount = 1;
-                foreach (var file in images.Take(5)) // Strictly limit to 5
+                // --- IMAGE UPLOAD & EXIF FORENSICS LOGIC ---
+                if (images != null && images.Count > 0)
                 {
-                    if (file.Length > 0)
+                    // FIX 1: Explicitly tell C# to use System.IO for the folder directory
+                    string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
+                    System.IO.Directory.CreateDirectory(uploadsFolder);
+
+                    int imageCount = 1;
+                    foreach (var file in images.Take(5))
                     {
-                        // Generate a unique filename so images don't overwrite each other
-                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        if (file.Length > 0)
                         {
-                            await file.CopyToAsync(fileStream);
+                            // 1. EXIF EXTRACTION (We grab the metadata from the Primary Image)
+                            if (imageCount == 1)
+                            {
+                                try
+                                {
+                                    using (var stream = file.OpenReadStream())
+                                    {
+                                        var directories = ImageMetadataReader.ReadMetadata(stream);
+
+                                        // Extract Shutter Time
+                                        var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                                        if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime captureTime))
+                                        {
+                                            job.ExifCaptureTime = captureTime;
+                                        }
+
+                                        // Extract Embedded Camera GPS
+                                        var gpsDirectory = directories.OfType<GpsDirectory>().FirstOrDefault();
+                                        var location = gpsDirectory?.GetGeoLocation();
+
+                                        // FIX 2: Check .HasValue and use .Value for the struct
+                                        if (location.HasValue && !location.Value.IsZero)
+                                        {
+                                            job.ExifLatitude = location.Value.Latitude;
+                                            job.ExifLongitude = location.Value.Longitude;
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                    // If the image has no EXIF data, we just ignore it and move on
+                                }
+                            }
+
+                            // 2. SAVE THE FILE TO DISK
+                            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                            using (var fileStream = new FileStream(filePath, FileMode.Create))
+                            {
+                                await file.CopyToAsync(fileStream);
+                            }
+
+                            string dbPath = "/uploads/jobs/" + uniqueFileName;
+
+                            if (imageCount == 1) job.JobImageUrl = dbPath;
+                            else if (imageCount == 2) job.JobImageUrl2 = dbPath;
+                            else if (imageCount == 3) job.JobImageUrl3 = dbPath;
+                            else if (imageCount == 4) job.JobImageUrl4 = dbPath;
+                            else if (imageCount == 5) job.JobImageUrl5 = dbPath;
+
+                            imageCount++;
                         }
-
-                        string dbPath = "/uploads/jobs/" + uniqueFileName;
-
-                        // Assign to the correct database column
-                        if (imageCount == 1) job.JobImageUrl = dbPath;
-                        else if (imageCount == 2) job.JobImageUrl2 = dbPath;
-                        else if (imageCount == 3) job.JobImageUrl3 = dbPath;
-                        else if (imageCount == 4) job.JobImageUrl4 = dbPath;
-                        else if (imageCount == 5) job.JobImageUrl5 = dbPath;
-
-                        imageCount++;
                     }
                 }
-            }
 
             ModelState.Remove("EmployerId");
             ModelState.Remove("Employer");

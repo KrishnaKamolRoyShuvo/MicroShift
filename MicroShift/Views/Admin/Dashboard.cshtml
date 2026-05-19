@@ -1,5 +1,6 @@
 ﻿@{
     ViewData["Title"] = "Command Center";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml"; //admin dashboard import
     // Setup for charts
     var labelsJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.MonthLabels);
     var revenueJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.MonthlyRevenueData);

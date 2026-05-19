@@ -1,0 +1,208 @@
+﻿@model MicroShift.Models.Job
+@{
+    ViewData["Title"] = "Case #" + Model.Id;
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    
+    // Gather evidence photos
+    var photos = new[] { Model.JobImageUrl, Model.JobImageUrl2, Model.JobImageUrl3, Model.JobImageUrl4, Model.JobImageUrl5 }
+        .Where(url => !string.IsNullOrEmpty(url)).ToList();
+        
+    // Find accepted worker (if any)
+    var assignedWorker = Model.JobApplications.FirstOrDefault(a => a.Status == "Accepted")?.Worker;
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <a href="/Admin/Disputes" class="text-sm font-bold text-brandBlue hover:underline flex items-center mb-2">
+                ← Back to Queue
+            </a>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Case Evaluation: #@Model.Id</h1>
+        </div>
+        <div class="text-right">
+            <p class="text-sm text-gray-500 font-bold">Escrow Locked</p>
+            <p class="text-3xl font-black text-red-600">৳@Model.PaymentAmount</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-black text-gray-900 mb-4 border-b pb-2">Original Agreement</h2>
+                <h3 class="font-bold text-brandBlue text-xl mb-2">@Model.Title</h3>
+                <p class="text-sm text-gray-600 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-100">@Model.Description</p>
+                
+                <div class="flex justify-between items-center text-sm border-t pt-4">
+                    <div>
+                        <p class="font-bold text-gray-900">Employer:</p>
+                        <p class="text-gray-600">@(Model.Employer?.FullName ?? Model.Employer?.Email)</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-gray-900">Assigned Worker:</p>
+                        <p class="text-gray-600">@(assignedWorker?.FullName ?? assignedWorker?.Email ?? "None assigned yet")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-black text-gray-900 mb-4 border-b pb-2">Task Evidence</h2>
+                
+                @if (photos.Any())
+                {
+                    <div class="grid grid-cols-2 gap-4">
+                        @foreach (var img in photos)
+                        {
+                            <div class="border border-gray-200 rounded-xl overflow-hidden group">
+                                <a href="@img" target="_blank">
+                                    <img src="@img" class="h-40 w-full object-cover group-hover:opacity-80 transition" />
+                                </a>
+                                <div class="bg-slate-900 p-2 text-[10px] text-green-400 font-mono leading-tight">
+                                    <p>> SYSTEM_TIMESTAMP:</p>
+                                    <p class="text-white mb-1">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss UTC")</p>
+                                    <p>> GPS_ANCHOR:</p>
+                                    <p class="text-white">LAT: @Model.Latitude, LNG: @Model.Longitude</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg text-center">No photographic evidence was uploaded for this task.</p>
+                }
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-black text-gray-900 mb-4 border-b pb-2 flex justify-between">
+                    Chat Transcript
+                    <span class="text-xs bg-indigo-100 text-brandBlue px-2 py-1 rounded font-bold">Read-Only</span>
+                </h2>
+                <div class="h-48 overflow-y-auto bg-gray-50 p-4 rounded-lg border border-gray-100 text-sm text-center flex items-center justify-center text-gray-400">
+                    [System: Retrieve chat logs from communication table]
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-xl border-t-4 border-adminHighlight h-fit sticky top-6">
+            <h2 class="text-2xl font-black text-gray-900 mb-2">Issue Final Ruling</h2>
+            <p class="text-sm text-gray-500 mb-6 font-medium">This action is irreversible. Funds will be routed immediately based on your decision.</p>
+
+            <form asp-action="ResolveDispute" method="post" id="rulingForm">
+                <input type="hidden" name="jobId" value="@Model.Id" />
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-900 mb-2">Assign Fault (For user trust metrics):</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="faultAssignedTo" value="Employer" class="peer sr-only" required />
+                            <div class="text-center px-2 py-3 border border-gray-200 rounded-xl peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 font-bold text-sm transition hover:bg-gray-50">Employer Fault</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="faultAssignedTo" value="Worker" class="peer sr-only" required />
+                            <div class="text-center px-2 py-3 border border-gray-200 rounded-xl peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 font-bold text-sm transition hover:bg-gray-50">Worker Fault</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="faultAssignedTo" value="Mutual" class="peer sr-only" required />
+                            <div class="text-center px-2 py-3 border border-gray-200 rounded-xl peer-checked:bg-indigo-50 peer-checked:border-brandBlue peer-checked:text-brandBlue font-bold text-sm transition hover:bg-gray-50">Mutual / No Fault</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-900 mb-2">Official Investigation Note (Private):</label>
+                    <textarea name="adminNote" rows="4" class="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brandBlue outline-none" placeholder="Detail exactly why you made this ruling for future audits..." required></textarea>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t border-gray-100">
+                    
+                    <label class="block cursor-pointer relative">
+                        <input type="radio" name="resolutionType" value="ForceComplete" class="peer sr-only" required />
+                        <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-green-500 peer-checked:bg-green-50 transition hover:border-gray-300">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-black text-gray-900">Force Complete (Pay Worker)</span>
+                                <span class="text-green-600 font-bold">৳@Model.PaymentAmount</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Worker successfully completed the job. Escrow will be released to them minus commission.</p>
+                        </div>
+                    </label>
+
+                    <label class="block cursor-pointer relative">
+                        <input type="radio" name="resolutionType" value="CancelRefund" class="peer sr-only" required />
+                        <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-red-500 peer-checked:bg-red-50 transition hover:border-gray-300">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-black text-gray-900">Cancel Job (Refund Employer)</span>
+                                <span class="text-red-600 font-bold">৳@Model.PaymentAmount</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Task was not completed to standard. Full escrow will be returned to the Employer.</p>
+                        </div>
+                    </label>
+
+                    <label class="block cursor-pointer relative">
+                        <input type="radio" name="resolutionType" value="PartialSettlement" class="peer sr-only" id="partialRadio" required />
+                        <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-brandBlue peer-checked:bg-indigo-50 transition hover:border-gray-300">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-black text-gray-900">Partial Settlement</span>
+                                <span class="text-brandBlue font-bold">Split Funds</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-3">Adjust the final payout. The remaining balance will be refunded to the employer.</p>
+                            
+                            <div id="partialInputDiv" class="hidden flex items-center gap-2">
+                                <span class="text-sm font-bold text-gray-700">Pay Worker: ৳</span>
+                                <input type="number" name="newPaymentAmount" id="partialAmount" max="@Model.PaymentAmount" step="0.01" class="border border-gray-300 rounded-lg px-2 py-1 w-24 text-sm font-bold" placeholder="0.00" disabled />
+                                <span class="text-xs text-red-500 hidden font-bold" id="partialWarning">Cannot exceed original escrow!</span>
+                            </div>
+                        </div>
+                    </label>
+
+                </div>
+
+                <button type="submit" class="w-full mt-8 bg-adminDark text-white py-4 rounded-xl font-black tracking-wider hover:bg-black transition shadow-lg flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5 text-adminHighlight" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+                    EXECUTE RULING
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Logic to show/hide the Partial Settlement input box
+        const radios = document.querySelectorAll('input[name="resolutionType"]');
+        const partialDiv = document.getElementById('partialInputDiv');
+        const partialInput = document.getElementById('partialAmount');
+        const maxAmount = @Model.PaymentAmount;
+        const warning = document.getElementById('partialWarning');
+        const form = document.getElementById('rulingForm');
+
+        radios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'PartialSettlement') {
+                    partialDiv.classList.remove('hidden');
+                    partialInput.disabled = false;
+                    partialInput.required = true;
+                } else {
+                    partialDiv.classList.add('hidden');
+                    partialInput.disabled = true;
+                    partialInput.required = false;
+                    warning.classList.add('hidden');
+                }
+            });
+        });
+
+        // Prevent admin from paying out more money than what is in escrow
+        form.addEventListener('submit', function(e) {
+            if (document.getElementById('partialRadio').checked) {
+                if (parseFloat(partialInput.value) > maxAmount) {
+                    e.preventDefault();
+                    warning.classList.remove('hidden');
+                    partialInput.focus();
+                }
+            }
+        });
+    </script>
+}
