@@ -45,9 +45,14 @@
             </div>
 
             <div class="border-t border-gray-100 pt-6">
-                <label class="block text-sm font-bold text-gray-700 mb-1">Upload Task Photos (Max 5)</label>
-                <p class="text-xs text-gray-500 mb-3">Upload clear photos to help workers understand the task. (Metadata is preserved for security & dispute resolution).</p>
-                <input type="file" name="images" id="imageUpload" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-brandBlue hover:file:bg-indigo-100 transition" />
+                <label class="block text-sm font-bold text-gray-700 mb-1">
+                    Upload 'Before' Task Photo (1 Required, Max 5) <span class="text-red-500">*</span>
+                </label>
+                <p class="text-xs text-gray-500 mb-3">Upload a clear photo of the current state of the task. (Metadata is preserved to protect you in case of a dispute).</p>
+
+                <input type="file" name="images" id="imageUpload" multiple accept="image/*" required class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-brandBlue hover:file:bg-indigo-100 transition" />
+
+                <span asp-validation-for="JobImageUrl" class="text-red-500 text-xs mt-2 block font-bold"></span>
                 <p id="fileLimitWarning" class="text-red-500 text-xs mt-2 hidden font-bold">You can only upload a maximum of 5 images.</p>
             </div>
 

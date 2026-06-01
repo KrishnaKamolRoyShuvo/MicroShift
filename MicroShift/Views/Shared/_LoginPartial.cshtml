@@ -1,49 +1,19 @@
-﻿@* @using Microsoft.AspNetCore.Identity
-
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
-
-<ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    <li class="nav-item">
-        <a id="manage" class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @UserManager.GetUserName(User)!</a>
-    </li>
-    <li class="nav-item">
-        <form id="logoutForm" class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button id="logout" type="submit" class="nav-link btn btn-link text-dark border-0">Logout</button>
-        </form>
-    </li>
-}
-else
-{
-    <li class="nav-item">
-        <a class="nav-link text-dark" id="register" asp-area="Identity" asp-page="/Account/Register">Register</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" id="login" asp-area="Identity" asp-page="/Account/Login">Login</a>
-    </li>
-}
-</ul> *@
-
-
-
-
-@using Microsoft.AspNetCore.Identity
+﻿@using Microsoft.AspNetCore.Identity
 @using MicroShift.Models
-
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
-<ul class="flex items-center space-x-4 m-0 p-0 list-none">
+<ul class="navbar-nav">
     @if (SignInManager.IsSignedIn(User))
     {
-        <li>
-            <a class="text-sm font-medium text-gray-700 hover:text-brandBlue" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
-                Hello, @UserManager.GetUserName(User)!
+        var currentUser = await UserManager.GetUserAsync(User);
+
+        <li class="nav-item">
+            <!-- Links to the new Profile Controller, passing the User's ID -->
+            <a class="nav-link text-dark font-bold hover:text-brandBlue transition" href="/Profile/User/@currentUser?.Id" title="Manage Profile">
+                <span class="text-brandBlue">@(currentUser?.FullName ?? "User")</span>
             </a>
-        </li>
-        <li>
+        
             <form class="m-0" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
                 <button type="submit" class="text-sm font-medium text-red-500 hover:text-red-700 transition bg-transparent border-0 cursor-pointer">
                     Logout
@@ -54,9 +24,8 @@ else
     else
     {
         <li>
-            <a class="text-sm font-medium text-gray-600 hover:text-brandBlue transition" asp-area="Identity" asp-page="/Account/Login">Log in</a>
-        </li>
-        <li>
+            <a class="text-sm font-medium text-gray-600 hover:text-brandBlue transition" style="padding: 10px;" asp-area="Identity" asp-page="/Account/Login">Log in</a>
+        
             <a class="text-sm font-medium text-white bg-gradient-to-r from-brandBlue to-brandPurple px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition" asp-area="Identity" asp-page="/Account/Register">
                 Join MicroShift
             </a>

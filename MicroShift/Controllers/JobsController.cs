@@ -160,7 +160,7 @@ namespace MicroShift.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
 
-            // NEW: Backend Security - Hard block Admins from submitting data
+            // Backend Security - Hard block Admins from submitting data
             if (await _userManager.IsInRoleAsync(user, "Admin"))
             {
                 return Unauthorized("System Administrators are not permitted to post live jobs.");
@@ -174,9 +174,14 @@ namespace MicroShift.Controllers
             job.FinalCommissionPercentage = category?.CategoryCommissionPercentage ?? 10.0;
 
             // --- IMAGE UPLOAD & EXIF FORENSICS LOGIC ---
-            if (images != null && images.Count > 0)
+
+            // STRICT ENFORCEMENT: Reject if no image is uploaded
+            if (images == null || images.Count == 0)
             {
-                // FIX 1: Explicitly tell C# to use System.IO for the folder directory
+                ModelState.AddModelError("JobImageUrl", "A 'Before' photo is strictly required to establish a forensic timeline.");
+            }
+            else
+            {
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
                 System.IO.Directory.CreateDirectory(uploadsFolder);
 
@@ -205,7 +210,6 @@ namespace MicroShift.Controllers
                                     var gpsDirectory = directories.OfType<GpsDirectory>().FirstOrDefault();
                                     var location = gpsDirectory?.GetGeoLocation();
 
-                                    // FIX 2: Check .HasValue and use .Value for the struct
                                     if (location.HasValue && !location.Value.IsZero)
                                     {
                                         job.ExifLatitude = location.Value.Latitude;
@@ -239,6 +243,9 @@ namespace MicroShift.Controllers
                         imageCount++;
                     }
                 }
+
+                // We successfully added the image, so we remove the validation block for this property
+                ModelState.Remove("JobImageUrl");
             }
 
             ModelState.Remove("EmployerId");

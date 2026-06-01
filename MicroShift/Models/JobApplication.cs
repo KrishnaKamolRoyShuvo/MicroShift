@@ -8,13 +8,11 @@ namespace MicroShift.Models
         [Key]
         public int Id { get; set; }
 
-
         // Links to the Job they are applying for
         [Required]
         public int JobId { get; set; }
         [ForeignKey("JobId")]
         public virtual Job? Job { get; set; }
-
 
         // Links to the Worker who is applying
         [Required]
@@ -22,30 +20,31 @@ namespace MicroShift.Models
         [ForeignKey("WorkerId")]
         public virtual ApplicationUser? Worker { get; set; }
 
-
-
         // Tracks the application state: "Pending", "Accepted", "Rejected"
         public string Status { get; set; } = "Pending";
 
         public DateTime AppliedAt { get; set; } = DateTime.UtcNow;
 
-
-
-        // --- NEW: WORKER EVIDENCE (For "Mark as Done") ---
+        // --- WORKER EVIDENCE (For "Mark as Done") ---
         public string? WorkerEvidenceUrl { get; set; }
         public DateTime? WorkerEvidenceDate { get; set; }
         public bool IsWorkerTimeFraudDetected { get; set; } = false;
 
+        // --- NEW: FORENSIC DISPUTE COURTROOM ---
+        public string? DisputeInitiator { get; set; } // Will store "Worker" or "Employer"
 
-
-        // --- NEW: EMPLOYER EVIDENCE (For "Raise Dispute") ---
-        public string? EmployerDisputeUrl { get; set; }
-        public DateTime? EmployerDisputeDate { get; set; }
+        // Employer's Side of the Dispute
+        public string? EmployerDisputeText { get; set; }
+        public string? EmployerDisputeImageUrl { get; set; }
+        public DateTime? EmployerDisputeExifTime { get; set; }
         public bool IsEmployerTimeFraudDetected { get; set; } = false;
 
+        // Worker's Side of the Dispute
+        public string? WorkerDisputeText { get; set; }
+        public string? WorkerDisputeImageUrl { get; set; }
+        public DateTime? WorkerDisputeExifTime { get; set; }
 
-
-        // --- NEW: AI MODERATION ---
+        // --- AI MODERATION ---
         public double? AiFraudProbabilityScore { get; set; }
     }
 }

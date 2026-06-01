@@ -306,11 +306,11 @@ namespace MicroShift.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // --- EMPLOYER: RAISE A DISPUTE ---
+        // --- EMPLOYER: SUBMIT DISPUTE EVIDENCE ---
         [HttpPost]
         [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DisputeJob(int applicationId)
+        public async Task<IActionResult> SubmitEmployerDispute(int applicationId, string disputeText, IFormFile disputePhoto)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot raise disputes.");
@@ -321,15 +321,53 @@ namespace MicroShift.Controllers
 
             if (application == null || application.Job == null) return Unauthorized();
 
+            if (disputePhoto == null || disputePhoto.Length == 0 || string.IsNullOrEmpty(disputeText))
+            {
+                TempData["ErrorMessage"] = "Both a text description and a photo are required to submit dispute evidence.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // 1. Process the Photo & Extract EXIF
+            var uploadsFolder = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot/uploads/evidence");
+            if (!System.IO.Directory.Exists(uploadsFolder)) System.IO.Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = "EMP_DISPUTE_" + Guid.NewGuid().ToString() + "_" + disputePhoto.FileName;
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await disputePhoto.CopyToAsync(stream);
+            }
+
+            application.EmployerDisputeImageUrl = "/uploads/evidence/" + uniqueFileName;
+            application.EmployerDisputeText = disputeText;
+
+            try
+            {
+                var directories = ImageMetadataReader.ReadMetadata(filePath);
+                var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime dateTaken))
+                {
+                    application.EmployerDisputeExifTime = dateTaken;
+                }
+            }
+            catch { /* Ignore if no EXIF */ }
+
+            // 2. Set State and Identify Initiator
+            if (string.IsNullOrEmpty(application.DisputeInitiator))
+            {
+                application.DisputeInitiator = "Employer";
+            }
+
             application.Status = "Disputed";
             application.Job.Status = "Disputed";
-            application.EmployerDisputeDate = DateTime.UtcNow;
 
+            // 3. Notify the Worker
             var notif = new Notification
             {
                 UserId = application.WorkerId,
-                Title = "Job Disputed ⚠️",
-                Message = $"The employer raised a dispute for '{application.Job.Title}'. Our team will review this.",
+                Title = "Dispute Evidence Required ⚠️",
+                Message = $"The employer submitted dispute evidence for '{application.Job.Title}'. Please go to your dashboard to submit your counter-evidence.",
                 NotificationType = "Dispute",
                 ActionUrl = "/Dashboard/WorkerDashboard",
                 CreatedAt = DateTime.UtcNow
@@ -339,7 +377,82 @@ namespace MicroShift.Controllers
             await _context.SaveChangesAsync();
             await _notificationHub.Clients.User(application.WorkerId).SendAsync("ReceiveNotification", notif.Title, notif.Message, notif.ActionUrl);
 
+            TempData["SuccessMessage"] = "Your dispute evidence has been securely submitted to the Admin.";
             return RedirectToAction(nameof(Index));
+        }
+
+        // --- WORKER: SUBMIT DISPUTE EVIDENCE ---
+        [HttpPost]
+        [Authorize(Roles = "Worker")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitWorkerDispute(int applicationId, string disputeText, IFormFile disputePhoto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var application = await _context.JobApplications
+                .Include(a => a.Job)
+                .FirstOrDefaultAsync(a => a.Id == applicationId && a.WorkerId == user!.Id);
+
+            if (application == null || application.Job == null) return Unauthorized();
+
+            if (disputePhoto == null || disputePhoto.Length == 0 || string.IsNullOrEmpty(disputeText))
+            {
+                TempData["ErrorMessage"] = "Both a text description and a photo are required to submit dispute evidence.";
+                return RedirectToAction(nameof(WorkerDashboard));
+            }
+
+            // 1. Process the Photo & Extract EXIF
+            var uploadsFolder = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot/uploads/evidence");
+            if (!System.IO.Directory.Exists(uploadsFolder)) System.IO.Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = "WRK_DISPUTE_" + Guid.NewGuid().ToString() + "_" + disputePhoto.FileName;
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await disputePhoto.CopyToAsync(stream);
+            }
+
+            application.WorkerDisputeImageUrl = "/uploads/evidence/" + uniqueFileName;
+            application.WorkerDisputeText = disputeText;
+
+            try
+            {
+                var directories = ImageMetadataReader.ReadMetadata(filePath);
+                var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime dateTaken))
+                {
+                    application.WorkerDisputeExifTime = dateTaken;
+                }
+            }
+            catch { /* Ignore if no EXIF */ }
+
+            // 2. Set State and Identify Initiator
+            if (string.IsNullOrEmpty(application.DisputeInitiator))
+            {
+                application.DisputeInitiator = "Worker";
+            }
+
+            application.Status = "Disputed";
+            application.Job.Status = "Disputed";
+
+            // 3. Notify the Employer
+            var notif = new Notification
+            {
+                UserId = application.Job.EmployerId,
+                Title = "Dispute Evidence Required ⚠️",
+                Message = $"The worker submitted dispute evidence for '{application.Job.Title}'. Please go to your dashboard to submit your counter-evidence.",
+                NotificationType = "Dispute",
+                ActionUrl = "/Dashboard/Index",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Notifications.Add(notif);
+
+            await _context.SaveChangesAsync();
+            await _notificationHub.Clients.User(application.Job.EmployerId).SendAsync("ReceiveNotification", notif.Title, notif.Message, notif.ActionUrl);
+
+            TempData["SuccessMessage"] = "Your defense evidence has been securely submitted to the Admin.";
+            return RedirectToAction(nameof(WorkerDashboard));
         }
 
 

@@ -94,9 +94,48 @@
                         }
                         else if (app.Job?.Status == "ReviewPending")
                         {
-                            <div class="w-full py-2 text-center bg-yellow-100 text-yellow-800 font-bold rounded-lg border border-yellow-200">
+                            <div class="w-full py-2 text-center bg-yellow-100 text-yellow-800 font-bold rounded-lg border border-yellow-200 mb-3">
                                 ⏳ Pending Employer Approval
                             </div>
+
+                            <button type="button" onclick="document.getElementById('worker-dispute-@app.Id').classList.toggle('hidden')" class="w-full py-2 bg-red-50 text-red-600 font-bold rounded-lg border border-red-200 hover:bg-red-100 transition text-sm">
+                                Raise Dispute
+                            </button>
+
+                            <!-- NEW: Hidden Worker Dispute Form -->
+                            <div id="worker-dispute-@app.Id" class="hidden mt-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <form asp-controller="Dashboard" asp-action="SubmitWorkerDispute" method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <label class="block text-sm font-bold text-red-900 mb-1">Why are you disputing?</label>
+                                    <textarea name="disputeText" required class="w-full rounded border-gray-300 p-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-red-500" rows="3" placeholder="Employer refuses to pay, extra work demanded, etc..."></textarea>
+
+                                    <label class="block text-sm font-bold text-red-900 mb-1">Evidence Photo <span class="text-red-500">*</span></label>
+                                    <input type="file" name="disputePhoto" accept="image/*" required class="w-full text-sm text-gray-700 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-bold file:bg-red-100 file:text-red-700 hover:file:bg-red-200 mb-3" />
+
+                                    <button type="submit" class="w-full py-2 bg-red-800 text-white font-bold rounded shadow hover:bg-red-900 transition text-sm">Submit to Admin</button>
+                                </form>
+                            </div>
+                        }
+                        else if (app.Status == "Disputed")
+                        {
+                            <div class="w-full py-3 text-center bg-red-100 text-red-800 font-black rounded-lg border border-red-300 mt-2">
+                                🚨 UNDER ADMIN REVIEW
+                            </div>
+
+                            @if (string.IsNullOrEmpty(app.WorkerDisputeText))
+                            {
+                                <div class="mt-3 p-4 bg-red-50 rounded-lg border border-red-200">
+                                    <p class="text-sm font-bold text-red-900 mb-3">⚠️ The Employer raised a dispute. You must submit counter-evidence.</p>
+                                    <form asp-controller="Dashboard" asp-action="SubmitWorkerDispute" method="post" enctype="multipart/form-data">
+                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                        <label class="block text-sm font-bold text-red-900 mb-1">Your Defense</label>
+                                        <textarea name="disputeText" required class="w-full rounded border-gray-300 p-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-red-500" rows="3"></textarea>
+                                        <label class="block text-sm font-bold text-red-900 mb-1">Defense Photo <span class="text-red-500">*</span></label>
+                                        <input type="file" name="disputePhoto" accept="image/*" required class="w-full text-sm text-gray-700 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-bold file:bg-red-100 file:text-red-700 mb-3" />
+                                        <button type="submit" class="w-full py-2 bg-red-700 text-white font-bold rounded shadow hover:bg-red-800 transition text-sm">Submit Defense</button>
+                                    </form>
+                                </div>
+                            }
                         }
                         else if (app.Status == "Completed")
                         {

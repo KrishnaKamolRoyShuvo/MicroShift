@@ -75,7 +75,10 @@ namespace MicroShift.Controllers
                 Title = "New Review Received! ⭐",
                 Message = $"Someone left you a {model.Rating}-star review for a recent job.",
                 NotificationType = "System",
-                ActionUrl = "#", // Later we can link this to their public profile
+
+                
+                ActionUrl = $"/Profile/User/{targetUser.Id}",
+
                 CreatedAt = DateTime.UtcNow
             };
             _context.Notifications.Add(notif);

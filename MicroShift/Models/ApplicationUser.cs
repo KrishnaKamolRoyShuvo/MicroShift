@@ -11,8 +11,8 @@ namespace MicroShift.Models
         public string Location { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // --- NEW FIELDS FOR FRAUD PREVENTION & MATCHING ---
-
+        // --- PUBLIC PROFILE DETAILS ---
+        public string? ProfilePictureUrl { get; set; } // NEW: For Public Profiles
         public string Address { get; set; } = string.Empty;
         public string Skills { get; set; } = string.Empty;
         public string Interests { get; set; } = string.Empty;
@@ -22,10 +22,13 @@ namespace MicroShift.Models
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
 
-        // --- SECURITY: EXPONENTIAL BACKOFF TRACKING ---
+        // --- SECURITY & MODERATION PENALTY BOX ---
         public int RecoveryFailedAttempts { get; set; } = 0;
         public DateTime? RecoveryLockoutEnd { get; set; }
         public bool IsAccountFrozen { get; set; } = false;
+
+        public DateTime? SuspensionEndDate { get; set; } // NEW: 15-day / 1-month bans
+        public bool IsPermanentlyBanned { get; set; } = false; // NEW: The ultimate kill switch
 
         // --- RATINGS SYSTEM ---
         public double AverageRating { get; set; } = 0.0;

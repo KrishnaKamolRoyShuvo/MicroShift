@@ -4,6 +4,7 @@ using MicroShift.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MicroShift.Migrations
 {
     [DbContext(typeof(MicroShiftDBContext))]
-    partial class MicroShiftDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260601012436_AddForensicsAndProfiles")]
+    partial class AddForensicsAndProfiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

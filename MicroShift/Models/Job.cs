@@ -18,7 +18,10 @@ namespace MicroShift.Models
         public string Description { get; set; } = string.Empty;
 
         // --- Descriptive Images (Up to 5) ---
-        public string? JobImageUrl { get; set; }  // Acts as the Cover Photo/Evidence Reference
+       
+        [Required(ErrorMessage = "You must upload a 'Before' photo of the task to post a job.")]
+        public string? JobImageUrl { get; set; }  // Mandatory Baseline Evidence
+
         public string? JobImageUrl2 { get; set; }
         public string? JobImageUrl3 { get; set; }
         public string? JobImageUrl4 { get; set; }
