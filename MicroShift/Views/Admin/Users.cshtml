@@ -5,7 +5,7 @@
 }
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
-    
+
     <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
         <div>
             <h1 class="text-3xl font-black text-gray-900 tracking-tight">Trust & Safety</h1>
@@ -19,7 +19,7 @@
                 <label class="block text-xs font-bold text-gray-500 mb-1">Search User</label>
                 <input type="text" name="searchQuery" value="@ViewBag.SearchQuery" placeholder="Search by name or email..." class="w-full rounded-xl border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-brandBlue outline-none" />
             </div>
-            
+
             <div class="w-full md:w-48">
                 <label class="block text-xs font-bold text-gray-500 mb-1">Role</label>
                 <select name="roleFilter" class="w-full rounded-xl border border-gray-300 px-4 py-2 outline-none">
@@ -57,14 +57,20 @@
             <tbody class="divide-y divide-gray-100 text-sm">
                 @foreach (var u in Model)
                 {
-                    <tr class="@(u.IsSuspended ? "bg-red-50 opacity-75" : "hover:bg-gray-50") transition">
+                    <tr class="@(u.IsSuspended ? "bg-red-50 opacity-90" : "hover:bg-gray-50") transition">
                         <td class="p-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0">
-                                    @(u.FullName.Substring(0, 1).ToUpper())
+                                    @(string.IsNullOrEmpty(u.FullName) ? "?" : u.FullName.Substring(0, 1).ToUpper())
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-900">@u.FullName</p>
+                                    <p class="font-bold text-gray-900 flex items-center gap-2">
+                                        @u.FullName
+                                        @if (u.IsSuspended)
+                                        {
+                                            <span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Banned</span>
+                                        }
+                                    </p>
                                     <p class="text-xs text-gray-500">@u.Email</p>
                                     <span class="inline-block mt-1 px-2 py-0.5 bg-indigo-100 text-brandBlue text-[10px] font-bold rounded">@u.Role</span>
                                 </div>
@@ -92,8 +98,8 @@
                             }
                         </td>
                         <td class="p-4 text-right">
-                            <div class="flex justify-end gap-2">
-                                
+                            <div class="flex justify-end gap-3 items-center">
+
                                 <form asp-action="ForceResetPassword" method="post" class="inline" onsubmit="return confirm('Override password for @u.FullName?');">
                                     <input type="hidden" name="userId" value="@u.Id" />
                                     <input type="hidden" name="newPassword" value="TempPass123!" />
@@ -102,17 +108,31 @@
                                     </button>
                                 </form>
 
-                                <form asp-action="ToggleSuspend" method="post" class="inline">
-                                    <input type="hidden" name="userId" value="@u.Id" />
-                                    @if (u.IsSuspended)
-                                    {
-                                        <button type="submit" class="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-green-600 transition">Unban</button>
-                                    }
-                                    else
-                                    {
-                                        <button type="submit" class="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-red-600 transition" onclick="return confirm('Suspend this user indefinitely?');">Suspend</button>
-                                    }
-                                </form>
+                                @if (u.IsSuspended)
+                                {
+                                    <form asp-action="RemovePenalty" method="post" class="inline">
+                                        <input type="hidden" name="userId" value="@u.Id" />
+                                        <button type="submit" class="bg-green-500 text-white px-4 py-1.5 rounded-md text-xs font-bold hover:bg-green-600 shadow-sm transition">
+                                            Force Unban
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="ApplyPenalty" method="post" class="inline flex items-center gap-1">
+                                        <input type="hidden" name="userId" value="@u.Id" />
+                                        <select name="penaltyType" class="text-xs border border-red-200 text-red-700 bg-red-50 rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-red-500 cursor-pointer" required>
+                                            <option value="" disabled selected>Select Penalty...</option>
+                                            <option value="7Days">Ban: 7 Days</option>
+                                            <option value="15Days">Ban: 15 Days</option>
+                                            <option value="1Month">Ban: 1 Month</option>
+                                            <option value="Permanent">Permanent Ban</option>
+                                        </select>
+                                        <button type="submit" class="bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-red-700 shadow-sm transition" onclick="return confirm('Execute this penalty? The user will be instantly logged out and locked out of the platform.');">
+                                            Execute
+                                        </button>
+                                    </form>
+                                }
 
                             </div>
                         </td>
