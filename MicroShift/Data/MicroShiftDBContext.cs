@@ -18,6 +18,9 @@ namespace MicroShift.Data
 
         public DbSet<Review> Reviews { get; set; }
 
+        public DbSet<Transaction> Transactions { get; set; }
+
+
 
         // 1. Register the new table
         public DbSet<JobApplication> JobApplications { get; set; }

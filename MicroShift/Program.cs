@@ -23,6 +23,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddRazorPages();
 
+Stripe.StripeConfiguration.ApiKey = builder.Configuration.GetSection("Stripe")["SecretKey"];
+
 var app = builder.Build();
 
 // --- DATA SEEDER INJECTION ---

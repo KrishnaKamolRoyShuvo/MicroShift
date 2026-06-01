@@ -1,0 +1,58 @@
+﻿@model IEnumerable<MicroShift.Models.Transaction>
+@{
+    ViewData["Title"] = "Transaction Ledger";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div class="mb-8 border-b border-gray-200 pb-4">
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Master Ledger</h1>
+        <p class="text-gray-500 mt-1 font-medium">Immutable record of all platform cashflow and commissions.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                    <th class="p-4 font-bold">Date</th>
+                    <th class="p-4 font-bold">User</th>
+                    <th class="p-4 font-bold">Description</th>
+                    <th class="p-4 font-bold">Type</th>
+                    <th class="p-4 font-bold text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                @foreach (var t in Model)
+                {
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-4 text-xs text-gray-500 font-medium">@t.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                        <td class="p-4">
+                            <span class="font-bold text-gray-900">@t.User?.FullName</span>
+                            <span class="block text-xs text-gray-400">@t.User?.Email</span>
+                        </td>
+                        <td class="p-4 text-gray-700">@t.Description</td>
+                        <td class="p-4">
+                            @if (t.Type == "Credit")
+                            {
+                                <span class="bg-green-100 text-green-800 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">Payout</span>
+                            }
+                            else if (t.Type == "PlatformFee")
+                            {
+
+                                <span class="bg-purple-100 text-purple-800 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">Revenue</span>
+                            }
+                            else
+                            {
+
+                                <span class="bg-gray-100 text-gray-800 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">@t.Type</span>
+                            }
+                        </td>
+                        <td class="p-4 text-right font-black @(t.Type == "PlatformFee" ? "text-purple-600" : "text-gray-900")">
+                            ৳@t.Amount.ToString("0.00")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

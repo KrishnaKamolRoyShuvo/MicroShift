@@ -376,5 +376,78 @@ namespace MicroShift.Controllers
             }
             return RedirectToAction(nameof(Settings));
         }
+
+        // --- 12. START IMPERSONATION (Using Secure Cookies) ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StartImpersonation(string userId)
+        {
+            // Find the user to determine their role
+            var targetUser = await _userManager.FindByIdAsync(userId);
+            var roles = await _userManager.GetRolesAsync(targetUser);
+            var primaryRole = roles.FirstOrDefault() ?? "Worker";
+
+            // Drop secure cookies into the browser to activate God Mode
+            Response.Cookies.Append("ImpersonatedUserId", userId, new CookieOptions { HttpOnly = true, Path = "/" });
+            Response.Cookies.Append("IsImpersonating", "true", new CookieOptions { HttpOnly = true, Path = "/" });
+
+            // NEW: Add a readable cookie so the Javascript knows which Dashboard URL to load!
+            Response.Cookies.Append("ImpersonatedRole", primaryRole, new CookieOptions { HttpOnly = false, Path = "/" });
+
+            return RedirectToAction("Dashboard", "Admin");
+        }
+
+        // --- 13. STOP IMPERSONATION ---
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult StopImpersonation()
+        {
+            // Destroy all cookies to return to normal
+            Response.Cookies.Delete("ImpersonatedUserId");
+            Response.Cookies.Delete("IsImpersonating");
+            Response.Cookies.Delete("ImpersonatedRole");
+
+            return RedirectToAction("Dashboard", "Admin");
+        }
+
+        // --- 14. API ENDPOINT FOR IDENTITY SWITCHER MODAL ---
+        [HttpGet]
+        public async Task<IActionResult> GetUsersForImpersonation(string role)
+        {
+            try
+            {
+                var users = await _userManager.GetUsersInRoleAsync(role);
+                var userList = users.Select(u => new
+                {
+                    id = u.Id,
+                    fullName = u.FullName ?? "Unknown User",
+                    email = u.Email
+                }).OrderBy(u => u.fullName).ToList();
+
+                return Json(userList);
+            }
+            catch (Exception ex)
+            {
+                // If it crashes, return the exact error message so we can see it in the console!
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+
+
+        // --- 15. TRANSACTION LEDGER ---
+        public async Task<IActionResult> Ledger()
+        {
+            // Fetch all transactions, including user details
+            var allTransactions = await _context.Transactions
+                .Include(t => t.User)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            return View(allTransactions);
+        }
+
+
+
     }
 }

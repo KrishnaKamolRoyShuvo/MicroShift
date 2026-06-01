@@ -1,9 +1,14 @@
 ﻿@model IEnumerable<MicroShift.Models.Message>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<MicroShift.Models.ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Job Chat";
     var currentUserId = ViewBag.CurrentUserId as string;
     var receiver = ViewBag.Receiver as MicroShift.Models.ApplicationUser;
     var job = ViewBag.Job as MicroShift.Models.Job;
+    
+    // Check if the person currently looking at the screen is an Admin
+    bool isCurrentUserAdmin = User.IsInRole("Admin");
 }
 
 <div class="max-w-4xl mx-auto px-4 py-8">
@@ -21,25 +26,56 @@
             @foreach (var msg in Model)
             {
                 bool isMe = msg.SenderId == currentUserId;
-                <div class="flex @(isMe ? "justify-end" : "justify-start")">
-                    <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm @(isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none")">
-                        
-                        @if (!string.IsNullOrEmpty(msg.ImageUrl))
-                        {
-                            <a href="@msg.ImageUrl" target="_blank">
-                                <img src="@msg.ImageUrl" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" alt="Attachment" />
-                            </a>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(msg.Content))
-                        {
-                            <p class="text-sm @(msg.IsFlaggedBySystem ? "font-bold text-red-300 italic" : "")">@msg.Content</p>
-                        }
-                        <span class="text-[10px] mt-2 block @(isMe ? "text-indigo-200" : "text-gray-400")">
-                            @msg.SentAt.ToString("MMM dd, h:mm tt")
-                        </span>
+                
+                // Determine if this specific message was sent by an Admin
+                var senderUser = await UserManager.FindByIdAsync(msg.SenderId);
+                bool isAdminMessage = senderUser != null && await UserManager.IsInRoleAsync(senderUser, "Admin");
+
+                if (isAdminMessage)
+                {
+                    <div class="flex justify-center my-6 w-full">
+                        <div class="bg-slate-900 border border-brandBlue text-white p-4 rounded-2xl max-w-lg shadow-xl w-full mx-4">
+                            <div class="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
+                                <span class="bg-brandBlue text-white text-[10px] font-black uppercase px-2 py-1 rounded">⚡ Official Moderation</span>
+                                <span class="text-xs text-gray-400 font-medium">Platform Administration</span>
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(msg.ImageUrl))
+                            {
+                                <a href="@msg.ImageUrl" target="_blank">
+                                    <img src="@msg.ImageUrl" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" alt="Attachment" />
+                                </a>
+                            }
+                            @if (!string.IsNullOrEmpty(msg.Content))
+                            {
+                                <p class="text-sm font-medium leading-relaxed text-red-100">@msg.Content</p>
+                            }
+                            <span class="text-[10px] mt-2 block text-gray-500 text-center">@msg.SentAt.ToString("MMM dd, h:mm tt")</span>
+                        </div>
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="flex @(isMe ? "justify-end" : "justify-start")">
+                        <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm @(isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none")">
+                            
+                            @if (!string.IsNullOrEmpty(msg.ImageUrl))
+                            {
+                                <a href="@msg.ImageUrl" target="_blank">
+                                    <img src="@msg.ImageUrl" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" alt="Attachment" />
+                                </a>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(msg.Content))
+                            {
+                                <p class="text-sm @(msg.IsFlaggedBySystem ? "font-bold text-red-300 italic" : "")">@msg.Content</p>
+                            }
+                            <span class="text-[10px] mt-2 block @(isMe ? "text-indigo-200" : "text-gray-400")">
+                                @msg.SentAt.ToString("MMM dd, h:mm tt")
+                            </span>
+                        </div>
+                    </div>
+                }
             }
         </div>
 
@@ -88,32 +124,52 @@
         var chatBox = document.getElementById("chatBox");
         chatBox.scrollTop = chatBox.scrollHeight;
 
+        // Pass the C# variable into JavaScript so it knows if we are an Admin sending a live message
+        var amIAdmin = @isCurrentUserAdmin.ToString().ToLower();
+
         var connection = new signalR.HubConnectionBuilder().withUrl("/chatHub").build();
 
         // 1. RECEIVE LOGIC
-        connection.on("ReceiveMessage", function(senderId, message, imageUrl, timeStamp) {
+        connection.on("ReceiveMessage", function(senderId, message, imageUrl, timeStamp, isAdmin) {
         var currentUserId = document.getElementById("currentUserId").value;
         var isMe = senderId === currentUserId;
-                
-        var bubbleClass = isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none";
-        var timeClass = isMe ? "text-indigo-200" : "text-gray-400";
-        var alignment = isMe ? "justify-end" : "justify-start";
-
-        var textClass = message.includes("[SYSTEM WARNING") ? (isMe ? "font-bold text-red-300 italic" : "font-bold text-red-500 italic") : "";
-
+            
         // Construct Image HTML if URL is provided
         var imageHtml = "";
         if (imageUrl && imageUrl.trim() !== "") {
         imageHtml = `<a href="${imageUrl}" target="_blank"><img src="${imageUrl}" class="rounded-lg max-w-full h-auto max-h-48 mb-2 cursor-pointer hover:opacity-90" /></a>`;
         }
 
-        // Construct Text HTML if text is provided
+        var msgHtml = "";
+
+        // If the person who sent it is an Admin (or if we are the admin sending it right now)
+        if (isAdmin || (isMe && amIAdmin)) {
+        msgHtml = `
+        <div class="flex justify-center my-6 w-full">
+        <div class="bg-slate-900 border border-brandBlue text-white p-4 rounded-2xl max-w-lg shadow-xl w-full mx-4">
+        <div class="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
+        <span class="bg-brandBlue text-white text-[10px] font-black uppercase px-2 py-1 rounded">⚡ Official Moderation</span>
+        <span class="text-xs text-gray-400 font-medium">Platform Administration</span>
+        </div>
+        ${imageHtml}
+        <p class="text-sm font-medium leading-relaxed text-red-100">${message}</p>
+        <span class="text-[10px] mt-2 block text-gray-500 text-center">${timeStamp}</span>
+        </div>
+        </div>`;
+        }
+        else {
+        // Normal user message styling
+        var bubbleClass = isMe ? "bg-brandBlue text-white rounded-br-none" : "bg-white border border-gray-200 text-gray-800 rounded-bl-none";
+        var timeClass = isMe ? "text-indigo-200" : "text-gray-400";
+        var alignment = isMe ? "justify-end" : "justify-start";
+        var textClass = message.includes("[SYSTEM WARNING") ? (isMe ? "font-bold text-red-300 italic" : "font-bold text-red-500 italic") : "";
+                
         var textHtml = "";
         if (message && message.trim() !== "") {
         textHtml = `<p class="text-sm ${textClass}">${message}</p>`;
         }
 
-        var msgHtml = `
+        msgHtml = `
         <div class="flex ${alignment}">
         <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm ${bubbleClass}">
         ${imageHtml}
@@ -121,6 +177,7 @@
         <span class="text-[10px] mt-2 block ${timeClass}">${timeStamp}</span>
         </div>
         </div>`;
+        }
                 
         chatBox.innerHTML += msgHtml;
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -128,7 +185,7 @@
 
         connection.start().catch(err => console.error(err.toString()));
 
-        // --- NEW: IMAGE PREVIEW LOGIC ---
+        // --- IMAGE PREVIEW LOGIC ---
         const imageInput = document.getElementById("imageInput");
         const imagePreviewContainer = document.getElementById("imagePreviewContainer");
         const imagePreview = document.getElementById("imagePreview");
@@ -153,23 +210,21 @@
         imagePreviewContainer.classList.add("hidden");
         imagePreview.src = "";
         });
-        // ---------------------------------
 
         // 2. AJAX UPLOAD AND SEND
         document.getElementById("sendButton").addEventListener("click", async function(event) {
         event.preventDefault();
-                
+                    
         var jobId = parseInt(document.getElementById("jobIdInput").value);
         var receiverId = document.getElementById("receiverIdInput").value;
         var message = document.getElementById("messageInput").value;
         var fileInput = document.getElementById("imageInput");
-                
+                    
         var finalImageUrl = null;
 
-        // If a file is selected, upload it FIRST
         if (fileInput.files.length > 0) {
         document.getElementById("uploadStatus").classList.remove("hidden");
-                    
+                        
         var formData = new FormData();
         formData.append("file", fileInput.files[0]);
 
@@ -185,17 +240,14 @@
         document.getElementById("uploadStatus").classList.add("hidden");
         return;
         }
-                    
+                        
         document.getElementById("uploadStatus").classList.add("hidden");
         }
 
-        // Prevent sending completely blank messages
         if (message.trim() === "" && !finalImageUrl) return;
 
-        // Send via SignalR
         connection.invoke("SendMessage", jobId, receiverId, message, finalImageUrl).catch(err => console.error(err.toString()));
 
-        // Clear inputs & Hide Preview
         document.getElementById("messageInput").value = "";
         document.getElementById("imageInput").value = "";
         document.getElementById("imagePreviewContainer").classList.add("hidden");

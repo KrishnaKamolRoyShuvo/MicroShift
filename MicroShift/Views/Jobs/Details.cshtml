@@ -124,6 +124,18 @@ else
                             <p class="text-sm text-gray-500 font-medium mb-3">You must be logged in to apply or chat.</p>
                             <a asp-area="Identity" asp-page="/Account/Login" class="w-full inline-block py-3 px-4 bg-gray-900 text-white rounded-xl font-bold shadow hover:bg-black transition">Log In</a>
                         }
+                        else if (User.IsInRole("Admin"))
+                        {
+                            <div class="bg-indigo-50 border border-brandBlue rounded-xl p-4 text-center mb-4 shadow-inner">
+                                <p class="text-sm text-brandBlue font-black uppercase tracking-widest mb-1">⚡ System Admin</p>
+                                <p class="text-[10px] text-gray-600 font-bold">Applications disabled in God Mode.</p>
+                            </div>
+            
+                            <a asp-controller="Chat" asp-action="Index" asp-route-jobId="@Model.Id" asp-route-receiverId="@Model.EmployerId" class="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-black transition">
+                                <svg class="w-4 h-4 text-brandBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                Message as Admin
+                            </a>
+                        }
                         else if (User.IsInRole("Employer"))
                         {
                             <p class="text-sm text-red-600 font-bold">Employers cannot apply for jobs.</p>

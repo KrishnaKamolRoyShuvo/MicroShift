@@ -7,15 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brandBlue: '#4F46E5', // Matches your main site
-                        adminDark: '#0F172A', // Deep slate for sidebar
-                        adminHighlight: '#F59E0B' // Gold accent
-                    }
-                }
-            }
+        theme: {
+        extend: {
+        colors: {
+        brandBlue: '#4F46E5', // Matches your main site
+        adminDark: '#0F172A', // Deep slate for sidebar
+        adminHighlight: '#F59E0B' // Gold accent
+        }
+        }
+        }
         }
     </script>
     @await RenderSectionAsync("Styles", required: false)
@@ -23,7 +23,6 @@
 <body class="bg-gray-50 text-gray-900 flex h-screen overflow-hidden font-sans">
 
     <aside id="adminSidebar" class="bg-adminDark text-gray-300 w-64 flex-shrink-0 transition-all duration-300 flex flex-col relative z-20 shadow-2xl overflow-y-auto">
-        
         <div class="h-16 flex items-center px-6 border-b border-gray-800 bg-gray-900">
             <span id="sidebarLogo" class="text-white font-black text-xl tracking-wider uppercase flex items-center gap-2">
                 <span class="text-adminHighlight">⚡</span> MicroShift
@@ -32,7 +31,7 @@
 
         <nav class="flex-1 py-6 px-3 space-y-1">
             <p class="px-3 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 sidebar-text">Command Center</p>
-            
+
             <a href="/Admin/Dashboard" class="flex items-center px-3 py-2.5 rounded-lg hover:bg-gray-800 hover:text-white group transition @(Context.Request.Path.StartsWithSegments("/Admin/Dashboard") ? "bg-gray-800 text-adminHighlight" : "")">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                 <span class="sidebar-text font-medium">Global Analytics</span>
@@ -43,7 +42,7 @@
                 <span class="sidebar-text font-medium @(Context.Request.Path.StartsWithSegments("/Admin/Disputes") ? "" : "text-red-400 group-hover:text-red-300")">Disputes (Courtroom)</span>
             </a>
 
-            <a href="#" class="flex items-center px-3 py-2.5 rounded-lg hover:bg-gray-800 hover:text-white group transition opacity-50 cursor-not-allowed" title="Coming Soon">
+            <a href="/Admin/Ledger" class="flex items-center px-3 py-2.5 rounded-lg hover:bg-gray-800 hover:text-white group transition @(Context.Request.Path.StartsWithSegments("/Admin/Ledger") ? "bg-gray-800 text-adminHighlight" : "")">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 <span class="sidebar-text font-medium">Transaction Ledger</span>
             </a>
@@ -80,20 +79,13 @@
     </aside>
 
     <div class="flex-1 flex flex-col overflow-hidden h-screen">
-        
         <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-10 flex-shrink-0">
             <div class="flex items-center">
                 <button id="toggleSidebar" class="text-gray-500 hover:text-brandBlue focus:outline-none p-2 rounded-lg hover:bg-gray-100 transition mr-4">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                
-                <div class="hidden md:flex bg-gray-100 rounded-lg p-1 border border-gray-200">
-                    <button class="px-3 py-1 text-xs font-bold rounded-md bg-white text-brandBlue shadow-sm">Admin View</button>
-                    <button class="px-3 py-1 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900">Worker View</button>
-                    <button class="px-3 py-1 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900">Employer View</button>
-                </div>
             </div>
-            
+
             <div class="flex items-center gap-4">
                 <a href="/" target="_blank" class="text-sm font-bold text-gray-600 hover:text-brandBlue flex items-center gap-1 transition">
                     Open Live Site
@@ -102,7 +94,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 relative">
+        <main id="adminContent" class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 relative">
             @RenderBody()
         </main>
     </div>
@@ -115,21 +107,21 @@
         let isCollapsed = false;
 
         toggleBtn.addEventListener('click', () => {
-            isCollapsed = !isCollapsed;
-            if (isCollapsed) {
-                sidebar.classList.remove('w-64');
-                sidebar.classList.add('w-16');
-                sidebarTexts.forEach(el => el.classList.add('hidden'));
-                sidebarLogo.innerHTML = '<span class="text-adminHighlight">⚡</span>';
-            } else {
-                sidebar.classList.remove('w-16');
-                sidebar.classList.add('w-64');
-                sidebarTexts.forEach(el => el.classList.remove('hidden'));
-                sidebarLogo.innerHTML = '<span class="text-adminHighlight">⚡</span> MicroShift';
-            }
+        isCollapsed = !isCollapsed;
+        if (isCollapsed) {
+        sidebar.classList.remove('w-64');
+        sidebar.classList.add('w-16');
+        sidebarTexts.forEach(el => el.classList.add('hidden'));
+        sidebarLogo.innerHTML = '<span class="text-adminHighlight">⚡</span>';
+        } else {
+        sidebar.classList.remove('w-16');
+        sidebar.classList.add('w-64');
+        sidebarTexts.forEach(el => el.classList.remove('hidden'));
+        sidebarLogo.innerHTML = '<span class="text-adminHighlight">⚡</span> MicroShift';
+        }
         });
     </script>
-    
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

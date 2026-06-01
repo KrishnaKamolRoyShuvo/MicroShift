@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MicroShift.Models
 {
@@ -11,7 +12,7 @@ namespace MicroShift.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // --- NEW FIELDS FOR FRAUD PREVENTION & MATCHING ---
-        
+
         public string Address { get; set; } = string.Empty;
         public string Skills { get; set; } = string.Empty;
         public string Interests { get; set; } = string.Empty;
@@ -29,5 +30,9 @@ namespace MicroShift.Models
         // --- RATINGS SYSTEM ---
         public double AverageRating { get; set; } = 0.0;
         public int TotalReviews { get; set; } = 0;
+
+        // --- WALLET SYSTEM ---
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal WalletBalance { get; set; } = 0;
     }
 }

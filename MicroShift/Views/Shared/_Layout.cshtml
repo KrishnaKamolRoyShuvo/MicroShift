@@ -10,7 +10,7 @@
     int unreadConversations = 0;
     int unreadNotificationsCount = 0;
     List<MicroShift.Models.Notification> latestNotifications = new List<MicroShift.Models.Notification>();
-    
+
     // 2. Calculate it before any HTML loads
     if (SignInManager.IsSignedIn(User))
     {
@@ -24,7 +24,7 @@
                 .Distinct()
                 .CountAsync();
 
-            // NEW: Fetch Notifications
+            // Fetch Notifications
             var userNotifications = await DbContext.Notifications
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.CreatedAt)
@@ -43,32 +43,41 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MicroShift</title>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Poppins', 'sans-serif'],
-                    },
-                    colors: {
-                        brandBlue: '#4F46E5', // Indigo 600
-                        brandPurple: '#9333EA', // Purple 600
-                    }
-                }
-            }
+        theme: {
+        extend: {
+        fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+        },
+        colors: {
+        brandBlue: '#4F46E5', // Indigo 600
+        brandPurple: '#9333EA', // Purple 600
+        }
+        }
+        }
         }
     </script>
 
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
-        .glass-nav { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(229, 231, 235, 0.5); }
+        body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f8fafc;
+        }
+
+        .glass-nav {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
+
     <header class="sticky top-0 z-50 glass-nav">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
@@ -76,29 +85,37 @@
                     <a class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brandBlue to-brandPurple" asp-area="" asp-controller="Home" asp-action="Index">
                         MicroShift
                     </a>
-                    
+
                     <div class="hidden md:flex items-center space-x-6">
                         <a class="text-gray-600 hover:text-brandBlue font-medium transition" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        
+
                         @if (User.IsInRole("Employer"))
                         {
                             <a class="nav-item text-gray-600 hover:text-brandBlue font-medium transition" asp-area="" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                            <a class="nav-item text-gray-600 hover:text-brandBlue font-medium transition flex items-center gap-1" asp-area="" asp-controller="Dashboard" asp-action="EmployerWallet">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                Billing
+                            </a>
                         }
-                        
+
                         @if (User.IsInRole("Worker"))
                         {
                             <a class="nav-item text-gray-600 hover:text-brandBlue font-medium transition" asp-area="" asp-controller="Dashboard" asp-action="WorkerDashboard">My Jobs</a>
+                            <a class="nav-item text-gray-600 hover:text-brandBlue font-medium transition flex items-center gap-1" asp-area="" asp-controller="Dashboard" asp-action="Wallet">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Wallet
+                            </a>
                         }
-                        
+
                         <a asp-controller="Jobs" asp-action="Index" class="text-gray-600 hover:text-brandBlue font-medium transition">Find Work</a>
                         <a asp-controller="Jobs" asp-action="Create" class="text-gray-600 hover:text-brandBlue font-medium transition">Post a Job</a>
-                        
+
                         @if (User.Identity.IsAuthenticated)
                         {
                             <a asp-controller="Chat" asp-action="Inbox" class="relative text-gray-600 hover:text-brandBlue font-medium transition flex items-center gap-1.5 h-full">
                                 <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                                 Messages
-                                
+
                                 @if (unreadConversations > 0)
                                 {
                                     <span class="absolute -top-1.5 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white animate-bounce">
@@ -113,7 +130,7 @@
                             <div class="relative ml-2 flex items-center">
                                 <button id="notifBtn" class="relative text-gray-600 hover:text-brandBlue transition flex items-center justify-center p-1 rounded-full hover:bg-gray-100">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-            
+
                                     <span id="notifBadge" class="absolute top-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-2 ring-white @(unreadNotificationsCount > 0 ? "" : "hidden")">
                                         @unreadNotificationsCount
                                     </span>
@@ -165,7 +182,7 @@
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    
+
     @if (User.Identity.IsAuthenticated)
     {
         <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
@@ -174,30 +191,30 @@
             const notifBtn = document.getElementById('notifBtn');
             const notifDropdown = document.getElementById('notifDropdown');
             if (notifBtn) {
-                notifBtn.addEventListener('click', () => notifDropdown.classList.toggle('hidden'));
+            notifBtn.addEventListener('click', () => notifDropdown.classList.toggle('hidden'));
             }
 
             // Global Notification Listener
             const notifConnection = new signalR.HubConnectionBuilder().withUrl("/notificationHub").build();
 
             notifConnection.on("ReceiveNotification", function(title, message, url) {
-                // Update Badge
-                const badge = document.getElementById('notifBadge');
-                badge.classList.remove('hidden');
-                badge.innerText = parseInt(badge.innerText || 0) + 1;
+            // Update Badge
+            const badge = document.getElementById('notifBadge');
+            badge.classList.remove('hidden');
+            badge.innerText = parseInt(badge.innerText || 0) + 1;
 
-                // Prepend new alert to the list
-                const notifList = document.getElementById('notifList');
-                const emptyState = notifList.querySelector('.text-center');
-                if(emptyState) emptyState.remove(); // Remove "All caught up" text
+            // Prepend new alert to the list
+            const notifList = document.getElementById('notifList');
+            const emptyState = notifList.querySelector('.text-center');
+            if(emptyState) emptyState.remove(); // Remove "All caught up" text
 
-                const newHtml = `
-                    <a href="${url}" class="block p-4 hover:bg-indigo-50 transition bg-blue-50/30 border-l-4 border-brandBlue">
-                        <p class="text-sm font-bold text-gray-900">${title}</p>
-                        <p class="text-xs text-gray-600 mt-1">${message}</p>
-                        <p class="text-[10px] text-brandBlue mt-2">Just now</p>
-                    </a>`;
-                notifList.insertAdjacentHTML('afterbegin', newHtml);
+            const newHtml = `
+            <a href="${url}" class="block p-4 hover:bg-indigo-50 transition bg-blue-50/30 border-l-4 border-brandBlue">
+            <p class="text-sm font-bold text-gray-900">${title}</p>
+            <p class="text-xs text-gray-600 mt-1">${message}</p>
+            <p class="text-[10px] text-brandBlue mt-2">Just now</p>
+            </a>`;
+            notifList.insertAdjacentHTML('afterbegin', newHtml);
             });
 
             notifConnection.start().catch(err => console.error("Notification Engine Error:", err.toString()));

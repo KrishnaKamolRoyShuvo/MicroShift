@@ -1,0 +1,82 @@
+﻿@model IEnumerable<MicroShift.Models.JobApplication>
+@{
+    ViewData["Title"] = "Billing & Payments";
+}
+
+<div class="max-w-5xl mx-auto px-4 py-8 font-sans">
+    <div class="mb-8 border-b border-gray-200 pb-4">
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Billing & Payments</h1>
+        <p class="text-gray-500 mt-1 font-medium">Manage your financial history and pending invoices.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-lg p-8 text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Total Amount Paid</p>
+                <h2 class="text-5xl font-black">৳@ViewBag.TotalPaid.ToString("0.00")</h2>
+                <p class="text-xs text-gray-400 mt-4">Lifetime platform expenditure.</p>
+            </div>
+            <svg class="absolute -bottom-4 -right-4 w-32 h-32 text-gray-700 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+
+        <div class="bg-gradient-to-br from-brandBlue to-purple-600 rounded-2xl shadow-lg p-8 text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-sm font-bold text-indigo-200 uppercase tracking-wider mb-2">Pending Invoices</p>
+                <h2 class="text-5xl font-black">৳@ViewBag.TotalPending.ToString("0.00")</h2>
+                <p class="text-xs text-indigo-200 mt-4">Awaiting your approval.</p>
+            </div>
+            <svg class="absolute -bottom-4 -right-4 w-32 h-32 text-white opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+    </div>
+
+    <h3 class="text-xl font-bold text-gray-900 mb-4">Action Required</h3>
+
+    @if (!Model.Any())
+    {
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">You are all caught up!</h3>
+            <p class="text-gray-500 mt-1">There are no pending payments requiring your approval.</p>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden text-sm">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                        <th class="p-4 font-bold">Job Title</th>
+                        <th class="p-4 font-bold">Worker</th>
+                        <th class="p-4 font-bold">Completed On</th>
+                        <th class="p-4 font-bold">Amount Due</th>
+                        <th class="p-4 font-bold text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach (var app in Model)
+                    {
+                        <tr class="hover:bg-gray-50 transition items-center">
+                            <td class="p-4 font-bold text-gray-900">@app.Job?.Title</td>
+                            <td class="p-4 text-gray-600">@app.Worker?.FullName</td>
+                            <td class="p-4 text-gray-500">
+                                @(app.WorkerEvidenceDate?.ToString("MMM dd, yyyy") ?? "Recently")
+                            </td>
+                            <td class="p-4 font-black text-brandBlue">৳@app.Job?.PaymentAmount.ToString("0.00")</td>
+                            <td class="p-4 text-right">
+                                <form asp-controller="Payment" asp-action="CreateCheckoutSession" method="post" class="inline">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition text-xs flex items-center inline-flex gap-1 ml-auto">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                        Pay Now
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

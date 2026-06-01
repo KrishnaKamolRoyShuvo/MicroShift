@@ -2,35 +2,35 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR; // NEW
+using Microsoft.AspNetCore.SignalR;
 using MicroShift.Data;
 using MicroShift.Models;
-using MicroShift.Hubs; // NEW
+using MicroShift.Hubs;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using Directory = MetadataExtractor.Directory;
 
 namespace MicroShift.Controllers
 {
-    [Authorize] // Allow anyone logged in to enter the controller
+    [Authorize]
     public class DashboardController : Controller
     {
         private readonly MicroShiftDBContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IHubContext<NotificationHub> _notificationHub; // NEW: The Real-Time Engine
+        private readonly IHubContext<NotificationHub> _notificationHub;
 
         public DashboardController(
             MicroShiftDBContext context,
             UserManager<ApplicationUser> userManager,
-            IHubContext<NotificationHub> notificationHub) // Inject it here
+            IHubContext<NotificationHub> notificationHub)
         {
             _context = context;
             _userManager = userManager;
             _notificationHub = notificationHub;
         }
 
-        // --- EMPLOYER DASHBOARD ---
-        [Authorize(Roles = "Employer")]
+        // --- EMPLOYER DASHBOARD (Expanded Access) ---
+        [Authorize(Roles = "Employer,Admin")]
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -48,12 +48,13 @@ namespace MicroShift.Controllers
 
         // --- EMPLOYER HIRE LOGIC ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> HireWorker(int applicationId)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
+            if (await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot hire workers.");
 
             var application = await _context.JobApplications
                 .Include(a => a.Job)
@@ -74,7 +75,6 @@ namespace MicroShift.Controllers
                 otherApp.Status = "Rejected";
             }
 
-            // --- 🔔 NOTIFY WORKER THEY WERE HIRED ---
             var notif = new Notification
             {
                 UserId = application.WorkerId,
@@ -87,10 +87,7 @@ namespace MicroShift.Controllers
             _context.Notifications.Add(notif);
 
             await _context.SaveChangesAsync();
-
-            // Push to screen instantly
-            await _notificationHub.Clients.User(application.WorkerId)
-                .SendAsync("ReceiveNotification", notif.Title, notif.Message, notif.ActionUrl);
+            await _notificationHub.Clients.User(application.WorkerId).SendAsync("ReceiveNotification", notif.Title, notif.Message, notif.ActionUrl);
 
             return RedirectToAction(nameof(Index));
         }
@@ -114,11 +111,12 @@ namespace MicroShift.Controllers
 
         // --- EMPLOYER: REJECT A WORKER ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectWorker(int applicationId)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot reject workers.");
 
             var application = await _context.JobApplications
                 .Include(a => a.Job)
@@ -128,7 +126,6 @@ namespace MicroShift.Controllers
 
             application.Status = "Rejected";
 
-            // --- 🔔 NOTIFY WORKER OF REJECTION ---
             var notif = new Notification
             {
                 UserId = application.WorkerId,
@@ -148,11 +145,12 @@ namespace MicroShift.Controllers
 
         // --- EMPLOYER: DELETE A JOB ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteJob(int jobId)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot delete live jobs from this view.");
 
             var job = await _context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == user!.Id);
             if (job == null) return NotFound();
@@ -187,7 +185,6 @@ namespace MicroShift.Controllers
             {
                 application.Job.Status = "Open";
 
-                // --- 🔔 NOTIFY EMPLOYER OF WITHDRAWAL ---
                 var notif = new Notification
                 {
                     UserId = application.Job.EmployerId,
@@ -257,7 +254,6 @@ namespace MicroShift.Controllers
             application.Status = "ReviewPending";
             application.Job.Status = "ReviewPending";
 
-            // --- 🔔 NOTIFY EMPLOYER JOB IS DONE ---
             var notif = new Notification
             {
                 UserId = application.Job.EmployerId,
@@ -277,11 +273,12 @@ namespace MicroShift.Controllers
 
         // --- EMPLOYER: APPROVE & FINALIZE JOB ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveJob(int applicationId)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot process payments.");
 
             var application = await _context.JobApplications
                 .Include(a => a.Job)
@@ -292,7 +289,6 @@ namespace MicroShift.Controllers
             application.Status = "Completed";
             application.Job.Status = "Completed";
 
-            // --- 🔔 NOTIFY WORKER OF APPROVAL ---
             var notif = new Notification
             {
                 UserId = application.WorkerId,
@@ -312,11 +308,12 @@ namespace MicroShift.Controllers
 
         // --- EMPLOYER: RAISE A DISPUTE ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DisputeJob(int applicationId)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) return Unauthorized("Admins cannot raise disputes.");
 
             var application = await _context.JobApplications
                 .Include(a => a.Job)
@@ -328,7 +325,6 @@ namespace MicroShift.Controllers
             application.Job.Status = "Disputed";
             application.EmployerDisputeDate = DateTime.UtcNow;
 
-            // --- 🔔 NOTIFY WORKER OF DISPUTE ---
             var notif = new Notification
             {
                 UserId = application.WorkerId,
@@ -345,5 +341,56 @@ namespace MicroShift.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+
+
+
+        // --- WORKER WALLET ---
+        [Authorize(Roles = "Worker")]
+        public async Task<IActionResult> Wallet()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var myTransactions = await _context.Transactions
+                .Where(t => t.UserId == user.Id)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            ViewBag.CurrentBalance = user.WalletBalance;
+            return View(myTransactions);
+        }
+
+
+        // --- EMPLOYER BILLING & WALLET ---
+        [Authorize(Roles = "Employer,Admin")]
+        public async Task<IActionResult> EmployerWallet()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            // 1. Calculate Total Amount Paid (Sum of all Completed jobs)
+            var completedJobs = await _context.JobApplications
+                .Include(a => a.Job)
+                .Where(a => a.Job.EmployerId == user.Id && a.Status == "Completed")
+                .ToListAsync();
+
+            decimal totalPaid = completedJobs.Sum(a => a.Job!.PaymentAmount);
+
+            // 2. Fetch Pending Payments (ReviewPending jobs)
+            var pendingApplications = await _context.JobApplications
+                .Include(a => a.Job)
+                .Include(a => a.Worker)
+                .Where(a => a.Job!.EmployerId == user.Id && a.Status == "ReviewPending")
+                .OrderBy(a => a.WorkerEvidenceDate)
+                .ToListAsync();
+
+            decimal totalPending = pendingApplications.Sum(a => a.Job!.PaymentAmount);
+
+            ViewBag.TotalPaid = totalPaid;
+            ViewBag.TotalPending = totalPending;
+
+            return View(pendingApplications);
+        }
+
     }
 }

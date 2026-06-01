@@ -28,8 +28,6 @@ namespace MicroShift.Controllers
         }
 
         // --- 1. THE JOB FEED (With Live GPS, Radius & Category Filter) ---
-        // Added userLat and userLon parameters to accept real-time device location from the client
-        // --- 1. THE JOB FEED (With Advanced Filters) ---
         public async Task<IActionResult> Index(
             int radius = 15,
             int? categoryId = null,
@@ -127,7 +125,6 @@ namespace MicroShift.Controllers
             {
                 if (user.Latitude.HasValue && user.Longitude.HasValue)
                 {
-                    // FIXED AMBIGUOUS REFERENCE
                     job.DistanceFromUser = MicroShift.Helpers.GeoCalculator.GetDistanceInKm(
                         user.Latitude.Value, user.Longitude.Value,
                         job.Latitude, job.Longitude);
@@ -145,7 +142,8 @@ namespace MicroShift.Controllers
         }
 
         // --- 3. POST A JOB (Form Page) ---
-        [Authorize(Roles = "Employer")]
+        // UPDATED: Allowed Admins to view the page without crashing
+        [Authorize(Roles = "Employer,Admin")]
         public async Task<IActionResult> Create()
         {
             ViewBag.CategoryId = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
@@ -154,13 +152,19 @@ namespace MicroShift.Controllers
 
         // --- 4. POST A JOB (Save to Database) ---
         [HttpPost]
-        [Authorize(Roles = "Employer")]
+        // UPDATED: Allowed Admins to access the route
+        [Authorize(Roles = "Employer,Admin")]
         [ValidateAntiForgeryToken]
-        
         public async Task<IActionResult> Create(Job job, List<IFormFile> images)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
+
+            // NEW: Backend Security - Hard block Admins from submitting data
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                return Unauthorized("System Administrators are not permitted to post live jobs.");
+            }
 
             job.EmployerId = user.Id;
             job.CreatedAt = DateTime.UtcNow;
@@ -169,76 +173,73 @@ namespace MicroShift.Controllers
             var category = await _context.Categories.FindAsync(job.CategoryId);
             job.FinalCommissionPercentage = category?.CategoryCommissionPercentage ?? 10.0;
 
-            // --- IMAGE UPLOAD LOGIC ---
             // --- IMAGE UPLOAD & EXIF FORENSICS LOGIC ---
             if (images != null && images.Count > 0)
-                // --- IMAGE UPLOAD & EXIF FORENSICS LOGIC ---
-                if (images != null && images.Count > 0)
+            {
+                // FIX 1: Explicitly tell C# to use System.IO for the folder directory
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
+                System.IO.Directory.CreateDirectory(uploadsFolder);
+
+                int imageCount = 1;
+                foreach (var file in images.Take(5))
                 {
-                    // FIX 1: Explicitly tell C# to use System.IO for the folder directory
-                    string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "jobs");
-                    System.IO.Directory.CreateDirectory(uploadsFolder);
-
-                    int imageCount = 1;
-                    foreach (var file in images.Take(5))
+                    if (file.Length > 0)
                     {
-                        if (file.Length > 0)
+                        // 1. EXIF EXTRACTION (We grab the metadata from the Primary Image)
+                        if (imageCount == 1)
                         {
-                            // 1. EXIF EXTRACTION (We grab the metadata from the Primary Image)
-                            if (imageCount == 1)
+                            try
                             {
-                                try
+                                using (var stream = file.OpenReadStream())
                                 {
-                                    using (var stream = file.OpenReadStream())
+                                    var directories = ImageMetadataReader.ReadMetadata(stream);
+
+                                    // Extract Shutter Time
+                                    var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                                    if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime captureTime))
                                     {
-                                        var directories = ImageMetadataReader.ReadMetadata(stream);
+                                        job.ExifCaptureTime = captureTime;
+                                    }
 
-                                        // Extract Shutter Time
-                                        var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-                                        if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime captureTime))
-                                        {
-                                            job.ExifCaptureTime = captureTime;
-                                        }
+                                    // Extract Embedded Camera GPS
+                                    var gpsDirectory = directories.OfType<GpsDirectory>().FirstOrDefault();
+                                    var location = gpsDirectory?.GetGeoLocation();
 
-                                        // Extract Embedded Camera GPS
-                                        var gpsDirectory = directories.OfType<GpsDirectory>().FirstOrDefault();
-                                        var location = gpsDirectory?.GetGeoLocation();
-
-                                        // FIX 2: Check .HasValue and use .Value for the struct
-                                        if (location.HasValue && !location.Value.IsZero)
-                                        {
-                                            job.ExifLatitude = location.Value.Latitude;
-                                            job.ExifLongitude = location.Value.Longitude;
-                                        }
+                                    // FIX 2: Check .HasValue and use .Value for the struct
+                                    if (location.HasValue && !location.Value.IsZero)
+                                    {
+                                        job.ExifLatitude = location.Value.Latitude;
+                                        job.ExifLongitude = location.Value.Longitude;
                                     }
                                 }
-                                catch
-                                {
-                                    // If the image has no EXIF data, we just ignore it and move on
-                                }
                             }
-
-                            // 2. SAVE THE FILE TO DISK
-                            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-                            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                            using (var fileStream = new FileStream(filePath, FileMode.Create))
+                            catch
                             {
-                                await file.CopyToAsync(fileStream);
+                                // If the image has no EXIF data, we just ignore it and move on
                             }
-
-                            string dbPath = "/uploads/jobs/" + uniqueFileName;
-
-                            if (imageCount == 1) job.JobImageUrl = dbPath;
-                            else if (imageCount == 2) job.JobImageUrl2 = dbPath;
-                            else if (imageCount == 3) job.JobImageUrl3 = dbPath;
-                            else if (imageCount == 4) job.JobImageUrl4 = dbPath;
-                            else if (imageCount == 5) job.JobImageUrl5 = dbPath;
-
-                            imageCount++;
                         }
+
+                        // 2. SAVE THE FILE TO DISK
+                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+
+                        string dbPath = "/uploads/jobs/" + uniqueFileName;
+
+                        if (imageCount == 1) job.JobImageUrl = dbPath;
+                        else if (imageCount == 2) job.JobImageUrl2 = dbPath;
+                        else if (imageCount == 3) job.JobImageUrl3 = dbPath;
+                        else if (imageCount == 4) job.JobImageUrl4 = dbPath;
+                        else if (imageCount == 5) job.JobImageUrl5 = dbPath;
+
+                        imageCount++;
                     }
                 }
+            }
 
             ModelState.Remove("EmployerId");
             ModelState.Remove("Employer");
