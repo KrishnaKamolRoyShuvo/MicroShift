@@ -10,11 +10,21 @@ namespace MicroShift.Data
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            // 1. Ensure Role Exists
+            // 1. Ensure Roles Exist
             if (!await roleManager.RoleExistsAsync("Admin"))
             {
                 await roleManager.CreateAsync(new IdentityRole("Admin"));
                 Console.WriteLine("✅ Admin Role Created.");
+            }
+            if (!await roleManager.RoleExistsAsync("Worker"))
+            {
+                await roleManager.CreateAsync(new IdentityRole("Worker"));
+                Console.WriteLine("✅ Worker Role Created.");
+            }
+            if (!await roleManager.RoleExistsAsync("Employer"))
+            {
+                await roleManager.CreateAsync(new IdentityRole("Employer"));
+                Console.WriteLine("✅ Employer Role Created.");
             }
 
             // Your new credentials
