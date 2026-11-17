@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using MicroShift.Data;
 using MicroShift.Models;
 
+// Enable legacy timestamp behavior to allow all DateTime kinds in PostgreSQL
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Resolve connection string from DATABASE_URL (Cloud/Neon) or appsettings (Local SQL Server)
@@ -32,7 +35,7 @@ builder.Services.AddDbContext<MicroShiftDBContext>(options =>
 
 // 2. Configure Identity to strictly use ApplicationUser and our DB Context
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-    options.SignIn.RequireConfirmedAccount = true)
+    options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<MicroShiftDBContext>();
 
